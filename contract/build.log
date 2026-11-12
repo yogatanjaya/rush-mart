@@ -1,0 +1,14 @@
+   Compiling pasar-pagi v0.1.0 (/mnt/c/Hermes/.worktrees/near-hackathon/contract)
+warning: method `npc_account` is never used
+   --> src/lib.rs:401:8
+    |
+100 | impl Contract {
+    | ------------- method in this implementation
+...
+401 |     fn npc_account(&self, npc_id: &str) -> AccountId {
+    |        ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pasar-pagi` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 2.25s

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="240" viewBox="0 0 300 240">
+  <!-- bingkai kayu tebal: papan luar + papan dalam -->
+  <rect x="0" y="0" width="300" height="240" rx="12" fill="#8d5722"/>
+  <rect x="3" y="3" width="294" height="234" rx="10" fill="#c08a4e"/>
+  <rect x="12" y="12" width="276" height="216" rx="7" fill="#8a5f3c"/>
+  <rect x="18" y="18" width="264" height="204" rx="5" fill="#a9784f"/>
+  <!-- garis bedengan: 3 kolom x 3 baris -->
+  <g stroke="#8a5f3c" stroke-width="2.5" opacity=".55" stroke-linecap="round">
+    <path d="M106 26v188"/><path d="M194 26v188"/>
+    <path d="M26 86h248"/><path d="M26 154h248"/>
+  </g>
+  <!-- bintik tanah gembur -->
+  <g fill="#c2946a" opacity=".45">
+    <circle cx="55" cy="52" r="2.4"/><circle cx="150" cy="40" r="2"/>
+    <circle cx="240" cy="66" r="2.2"/><circle cx="80" cy="120" r="2"/>
+    <circle cx="205" cy="132" r="2.4"/><circle cx="130" cy="196" r="2.2"/>
+    <circle cx="260" cy="188" r="2"/>
+  </g>
+  <!-- paku sudut -->
+  <circle cx="10" cy="10" r="3.4" fill="#8d5722"/>
+  <circle cx="290" cy="10" r="3.4" fill="#8d5722"/>
+  <circle cx="10" cy="230" r="3.4" fill="#8d5722"/>
+  <circle cx="290" cy="230" r="3.4" fill="#8d5722"/>
+</svg>

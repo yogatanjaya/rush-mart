@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80">
+  <ellipse cx="32" cy="74" rx="16" ry="5" fill="#000000" opacity=".18"/>
+  <!-- lengan -->
+  <rect x="3" y="44" width="9" height="20" rx="4.5" fill="#ffffff" stroke="#2b1d0e" stroke-width="2"/>
+  <rect x="52" y="44" width="9" height="20" rx="4.5" fill="#ffffff" stroke="#2b1d0e" stroke-width="2"/>
+  <!-- overall / badan -->
+  <path d="M20 42 h24 v22 q0 6 -6 6 h-12 q-6 0 -6 -6 Z" fill="#4e9a3c" stroke="#2b1d0e" stroke-width="2"/>
+  <path d="M28 42 h8 v10 h-8 Z" fill="#ffffff" stroke="#2b1d0e" stroke-width="1.6"/>
+  <!-- topi jerami lebar (paling atas) -->
+  <ellipse cx="32" cy="30" rx="22" ry="14" fill="#f2d78a" stroke="#2b1d0e" stroke-width="2"/>
+  <ellipse cx="32" cy="27" rx="12" ry="8" fill="#d9b862" stroke="#2b1d0e" stroke-width="2"/>
+  <!-- poni / rambut keluar dari bawah topi -->
+  <path d="M18 32 q4 8 6 10" stroke="#6b4226" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M46 32 q-4 8 -6 10" stroke="#6b4226" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,14 @@
+/* Minimal reset — the game theme lives in App.css */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
