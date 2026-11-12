@@ -508,7 +508,8 @@ def draw_queue_lane(d):
 
 
 def draw_door(d):
-    x, y, w, h = 505, 288, 75, 52
+    # digeser ke kiri supaya sejajar dengan karpet QUEUE (x kanvas 980)
+    x, y, w, h = 452, 288, 75, 52
 
     # kusen hijau
     rect(d, x, y, w, h, WOOD_XD)

@@ -48,7 +48,7 @@ const SHELF_POS: { crop: CropId; x: number; y: number }[] = [
 
 const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
 
-const PLAYER_SPAWN = { x: 1080, y: 596 };
+const PLAYER_SPAWN = { x: 979, y: 596 };
 
 /**
  * Traffic pelanggan berbasis gelombang (disetujui Bos Yoga):
@@ -77,6 +77,9 @@ const QUEUE_SLOTS = [
   { x: 980, y: 320 },
   { x: 980, y: 358 },
   { x: 980, y: 396 },
+  // dua slot tambahan mengantri di lantai (karpet tidak diperpanjang)
+  { x: 980, y: 434 },
+  { x: 980, y: 472 },
 ];
 
 /** 7 warga desa (lihat scripts/gen_npc_assets.py). */
@@ -169,7 +172,7 @@ const LANE_X = 330;
 /** Lama pelanggan "mengambil barang" saat sampai di satu rak. */
 const PICK_MS = 1000;
 /** Titik pintu masuk pelanggan. */
-const DOOR_X = 1085;
+const DOOR_X = 979;
 const DOOR_Y = 596;
 
 interface Customer {
@@ -206,6 +209,13 @@ interface Shelf {
 
 export class MinimarketScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
+
+  /** Suara koin memakai pemutar HTML (Phaser tetap "terkunci" karena klik
+   *  terjadi di tombol React, bukan di kanvas). */
+  private coinSfx?: HTMLAudioElement;
+  private failSfx?: HTMLAudioElement;
+  private enterSfx?: HTMLAudioElement;
+  private refillSfx?: HTMLAudioElement;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
   /** True kalau halaman minimarket yang sedang ditampilkan. */
   private front = true;
@@ -282,6 +292,24 @@ export class MinimarketScene extends Phaser.Scene {
     // (rak, pelanggan, antrian, status toko) harus dikosongkan di sini — kalau
     // tidak, rak dan collider menumpuk dua kali setiap kembali dari kebun.
     this.resetRuntimeState();
+
+    // Siapkan pemutar suara koin sekali saja (dipakai tiap transaksi berhasil).
+    if (!this.coinSfx) {
+      this.coinSfx = new Audio("assets/sfx/coin.wav");
+      this.coinSfx.preload = "auto";
+    }
+    if (!this.failSfx) {
+      this.failSfx = new Audio("assets/sfx/fail.wav");
+      this.failSfx.preload = "auto";
+    }
+    if (!this.enterSfx) {
+      this.enterSfx = new Audio("assets/sfx/enter.wav");
+      this.enterSfx.preload = "auto";
+      this.enterSfx.volume = 0.04;
+
+      this.refillSfx = new Audio("assets/sfx/refill.wav");
+      this.refillSfx.volume = 0.12;
+    }
 
     this.physics.world.setBounds(ROOM.x + 20, ROOM.y + 30, ROOM.w - 40, ROOM.h - 60);
     this.cameras.main.setBounds(0, 0, W, H);
@@ -513,10 +541,14 @@ export class MinimarketScene extends Phaser.Scene {
 
     this.updateBadge(shelf);
 
-    if (moved > 0) this.say(`${moved} ${CROPS[crop].name} masuk ke rak.`);
-    else if (economy.inventory[crop] <= 0)
+    if (moved > 0) {
+      this.playSfx(this.refillSfx);
+      this.say(`${moved} ${CROPS[crop].name} masuk ke rak.`);
+    } else if (economy.inventory[crop] <= 0) {
       this.say(`Inventory ${CROPS[crop].name} kosong — panen dulu di kebun.`);
-    else this.say(`Rak ${CROPS[crop].name} sudah penuh.`);
+    } else {
+      this.say(`Rak ${CROPS[crop].name} sudah penuh.`);
+    }
 
     return moved;
   }
@@ -693,6 +725,7 @@ export class MinimarketScene extends Phaser.Scene {
     if (this.storeState !== "open") return;
 
     const count = Phaser.Math.Between(WAVE_SIZE.min, WAVE_SIZE.max);
+
     let offset = 0;
     for (let i = 0; i < count; i++) {
       this.time.delayedCall(offset * 1000, () => this.spawnCustomer());
@@ -763,6 +796,9 @@ export class MinimarketScene extends Phaser.Scene {
       this.say("Rak kosong — pelanggan tidak masuk.");
       return;
     }
+
+    // bel masuk: setiap NPC yang benar-benar masuk toko
+    this.playSfx(this.enterSfx);
 
     const design = profile.design;
     const sprite = this.physics.add.sprite(DOOR_X, DOOR_Y, `npc-${design}-down-1`);
@@ -955,7 +991,6 @@ export class MinimarketScene extends Phaser.Scene {
             c.path = [
               { x: DOOR_X, y: c.rowY },
               { x: DOOR_X, y: 385 },
-              { x: 995, y: 385 },
             ];
             continue;
           }
@@ -975,7 +1010,6 @@ export class MinimarketScene extends Phaser.Scene {
             c.path = [
               { x: DOOR_X, y: c.rowY },
               { x: DOOR_X, y: 385 },
-              { x: 995, y: 385 },
             ];
           }
         }
@@ -997,7 +1031,7 @@ export class MinimarketScene extends Phaser.Scene {
         if (now >= c.patienceUntil) {
           // Kabur tanpa bayar: barang hangus, pemain rugi seharga bibit.
           if (this.pendingCustomer === c) this.clearPayment();
-          this.applyAbandonPenalty(c);
+          this.floatProfit(-this.applyAbandonPenalty(c));
           this.removeFromQueue(c);
           this.leave(c);
         }
@@ -1013,7 +1047,7 @@ export class MinimarketScene extends Phaser.Scene {
    * koin dipotong seharga bibit barang yang dibawa, dan laba ikut dipotong
    * supaya bar GOALS turun (boleh sampai minus).
    */
-  private applyAbandonPenalty(c: Customer) {
+  private applyAbandonPenalty(c: Customer): number {
     const loss = c.cart.reduce((sum, cr) => sum + CROPS[cr].seed, 0);
     if (loss > 0) {
       economy.coins = Math.max(0, economy.coins - loss);
@@ -1024,6 +1058,7 @@ export class MinimarketScene extends Phaser.Scene {
     } else {
       this.say("Pelanggan pergi — tidak dilayani.");
     }
+    return loss;
   }
 
   private clearPayment() {
@@ -1116,16 +1151,77 @@ export class MinimarketScene extends Phaser.Scene {
       economy.revenue += trueTotal;
       economy.profit += profitDelta;
       economy.served += 1;
+      this.floatProfit(profitDelta);
       this.say(`Pembayaran tepat — ${trueTotal} koin masuk, laba +${profitDelta}.`);
       this.removeFromQueue(c);
       this.leave(c);
     } else {
       // Salah hitung: pelanggan kesal dan pergi, barangnya hangus.
-      this.applyAbandonPenalty(c);
+      this.floatProfit(-this.applyAbandonPenalty(c));
       this.say(`Hitungan salah — pelanggan pergi.`);
       this.removeFromQueue(c);
       this.leave(c);
     }
+  }
+
+  /**
+   * Angka laba melayang naik di atas meja kasir lalu memudar.
+   * Dipanggil tepat setelah pemain menekan OKE pada transaksi yang benar.
+   */
+  /** Putar satu efek suara (HTMLAudio — tidak kena kunci audio Phaser). */
+  private playSfx(audio?: HTMLAudioElement) {
+    if (!audio) return;
+    // kalau suara sebelumnya belum selesai, pakai salinan supaya tidak terpotong
+    const node = audio.paused ? audio : (audio.cloneNode() as HTMLAudioElement);
+    node.currentTime = 0;
+    void node.play().catch(() => {});
+  }
+
+  private floatProfit(delta: number) {
+    if (delta === 0) return; // tidak ada laba/rugi: jangan tampilkan angka
+    const x = COUNTER.x + COUNTER.w / 2 + Phaser.Math.Between(-40, 40);
+    const y = COUNTER.y + COUNTER.h - 8;
+    const label = `${delta > 0 ? "+" : ""}${delta}`;
+    const t = this.add
+      .text(x, y, label, {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: "19px",
+        color: delta > 0 ? "#8CF7B4" : "#FF5A47",
+        stroke: "#2A1608",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(60)
+      .setScale(0.6);
+
+    // Bunyi: koin untuk laba, buzz untuk rugi (HTMLAudio, bukan Phaser).
+    const sfx = delta > 0 ? this.coinSfx : this.failSfx;
+    if (sfx) {
+      try {
+        sfx.currentTime = 0;
+        // koin 0.3, buzz rugi 0.25 (sedikit lebih pelan)
+        sfx.volume = delta > 0 ? 0.17 : 0.065;
+        void sfx.play().catch(() => {});
+      } catch {
+        /* diabaikan: suara opsional */
+      }
+    }
+
+    this.tweens.add({ targets: t, scale: 1, duration: 180, ease: "Back.easeOut" });
+    this.tweens.add({
+      targets: t,
+      y: y - 52,
+      duration: 1000,
+      ease: "Quad.easeOut",
+    });
+    this.tweens.add({
+      targets: t,
+      alpha: 0,
+      duration: 700,
+      delay: 300,
+      ease: "Quad.easeIn",
+      onComplete: () => t.destroy(),
+    });
   }
 
   /** Karpet kasir menyala hijau lembut saat pemain siap melayani. */
@@ -1177,10 +1273,8 @@ export class MinimarketScene extends Phaser.Scene {
     c.state = "leaving";
     c.serving = 0;
     c.path = [
-      { x: 995, y: 385 },
-      { x: 1085, y: 385 },
-      { x: 1085, y: 560 },
-      { x: 1085, y: 620 },
+      { x: DOOR_X, y: 385 },
+      { x: DOOR_X, y: DOOR_Y + 8 },
     ];
   }
 

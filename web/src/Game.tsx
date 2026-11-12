@@ -55,6 +55,9 @@ export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [world, setWorld] = useState<WorldSnapshot>(EMPTY);
   const [showSeeds, setShowSeeds] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
+  const musicRef = useRef<HTMLAudioElement | null>(null);
+  const mutedRef = useRef(false);
 
 
 
@@ -225,6 +228,42 @@ export default function Game() {
    * Tombol PLAY: mulai sesi (pemain bisa bergerak) sekaligus membuka toko
    * hari itu. Tidak ada lagi tombol READY, jadi PLAY yang jadi pemicunya.
    */
+  // Backsound: diputar begitu ada interaksi pertama (browser melarang autoplay penuh).
+  useEffect(() => {
+    const audio = new Audio("assets/audio/backsound.mp3");
+    audio.loop = true;
+    audio.volume = 0.006;
+    audio.preload = "auto";
+    musicRef.current = audio;
+
+    const startMusic = (ev?: Event) => {
+      // kalau interaksi pertama justru menekan tombol musik, biar tombol itu yang mengatur
+      const el = ev?.target as HTMLElement | undefined;
+      if (el?.closest?.(".hud-music")) return;
+      if (!mutedRef.current) void audio.play().catch(() => {});
+      window.removeEventListener("pointerdown", startMusic);
+      window.removeEventListener("keydown", startMusic);
+    };
+    window.addEventListener("pointerdown", startMusic);
+    window.addEventListener("keydown", startMusic);
+
+    return () => {
+      window.removeEventListener("pointerdown", startMusic);
+      window.removeEventListener("keydown", startMusic);
+      audio.pause();
+      musicRef.current = null;
+    };
+  }, []);
+
+  const toggleMusic = useCallback(() => {
+    const audio = musicRef.current;
+    if (!audio) return;
+    mutedRef.current = !mutedRef.current;
+    if (mutedRef.current) audio.pause();
+    else void audio.play().catch(() => {});
+    setMusicOn(!mutedRef.current);
+  }, []);
+
   const startGame = useCallback(() => {
     startSession();
     setPlaying(true);
@@ -305,7 +344,16 @@ export default function Game() {
 
       {/* ─── HUD atas ───────────────────────────────────────────────────── */}
       <div className="hud" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="hud-left">{/* inventory kini di bar bawah peta */}</div>
+        <div className="hud-left">
+          <button
+            className={`hud-btn hud-music${musicOn ? "" : " is-off"}`}
+            onClick={toggleMusic}
+            title={musicOn ? "Matikan musik" : "Nyalakan musik"}
+          >
+            <span className="hud-music-icon" aria-hidden="true">♪</span>
+            <span>{musicOn ? "ON" : "OFF"}</span>
+          </button>
+        </div>
 
         {/* Pindah halaman + TUTUP TOKO. Tombol mulai jualan ada di layar PLAY. */}
         <div className="hud-center">

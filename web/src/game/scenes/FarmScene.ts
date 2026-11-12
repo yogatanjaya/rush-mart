@@ -411,8 +411,10 @@ export class FarmScene extends Phaser.Scene {
   /** Tombol kecil "TANAM SEMUA" di bawah kanan setiap lahan. */
   private createPlantAllButtons() {
     for (const pos of PLOT_POS) {
-      // ── tombol PANEN: vertikal, menempel di sisi kanan lahan ──
-      const hx = pos.x + PLOT_W + 9;
+      // ── tombol PANEN: vertikal, menempel di sisi lahan ──
+      // Kolom kiri (jagung & wortel) di sisi kiri, kolom kanan di sisi kanan.
+      const leftSide = pos.x < 640;
+      const hx = leftSide ? pos.x - 9 : pos.x + PLOT_W + 9;
       // Ukuran tombol PANEN: 22 x 88 (tebal sama dengan TANAM SEMUA, lebih ramping)
       const H_BTN_W = 22;
       const H_BTN_H = 88;
@@ -441,7 +443,7 @@ export class FarmScene extends Phaser.Scene {
         if (isPlaying() && this.front) this.harvestCrop(pos.crop);
       });
 
-      const x = pos.x + PLOT_W - 54;
+      const x = leftSide ? pos.x + 54 : pos.x + PLOT_W - 54;
       const y = pos.y + PLOT_H + 12;
       const bg = this.add
         .rectangle(x, y, 104, 22, 0x2a1608, 0.92)

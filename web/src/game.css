@@ -153,6 +153,59 @@
   pointer-events: auto;
 }
 
+/* Tombol musik: satu warna rata (tanpa bevel), ON = hijau sage, OFF = merah bata */
+.hud-btn.hud-music {
+  background: #7da88b;
+  border: 3px solid #2a1608;
+  border-top-color: #2a1608;
+  border-left-color: #2a1608;
+  box-shadow: 0 4px 0 #3f1c0e;
+  color: #123321;
+  font-size: 11px;
+  padding: 0 12px;
+  letter-spacing: 0.5px;
+  text-shadow: none;
+}
+
+/* Logo not musik: hurufnya dinaikkan 7x dari ukuran teks tombol (11px -> 77px? tidak),
+   jadi dipakai ukuran yang benar-benar terbaca tanpa merusak tinggi tombol. */
+.hud-music-icon {
+  font-size: 34px;
+  line-height: 0.9;
+  display: inline-flex;
+  align-items: center;
+  transform: translateY(-6px);
+}
+
+.hud-btn.hud-music {
+  height: 52px;
+  gap: 4px;
+}
+
+.hud-btn.hud-music:hover:not(:disabled) {
+  background: #8fb79b;
+  box-shadow: 0 5px 0 #3f1c0e;
+}
+
+.hud-btn.hud-music:active:not(:disabled) {
+  background: #6d9980;
+  box-shadow: 0 2px 0 #3f1c0e;
+}
+
+.hud-btn.hud-music.is-off {
+  background: #c0523c;
+  border: 3px solid #2a1608;
+  border-top-color: #2a1608;
+  border-left-color: #2a1608;
+  color: #2a0f07;
+  opacity: 0.6;
+}
+
+.hud-btn.hud-music.is-off:hover:not(:disabled) {
+  background: #cf6a52;
+  opacity: 0.75;
+}
+
 /* Tombol READY / TUTUP TOKO di tengah HUD */
 .hud-center {
   position: absolute;
@@ -191,6 +244,12 @@
   background: #a06a34;
   transform: translateY(-1px);
   box-shadow: 0 5px 0 #3f1c0e;
+}
+
+/* Cincin fokus keyboard: sengaja dibuat senada, bukan biru bawaan browser */
+.hud-btn:focus-visible {
+  outline: 3px solid #ffd166;
+  outline-offset: 2px;
 }
 
 .hud-btn:active:not(:disabled) {
