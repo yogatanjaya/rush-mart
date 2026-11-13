@@ -441,13 +441,12 @@ export class FarmScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       // Huruf ditumpuk vertikal (tidak diputar) supaya terbaca tegak.
       this.add
-        .text(hx, hy, "P\nA\nN\nE\nN", {
+        .text(hx, hy, "H\nA\nR\nV\nE\nS\nT", {
           fontFamily: '"Press Start 2P", monospace',
-          fontSize: "8px",
+          fontSize: "7px",
           color: "#f4e2b8",
           align: "center",
-          // jarak antar huruf supaya tidak saling menimpa
-          lineSpacing: 4,
+          lineSpacing: 3,
         })
         .setOrigin(0.5)
         .setDepth(3.3);
@@ -465,7 +464,7 @@ export class FarmScene extends Phaser.Scene {
         .setDepth(3.2)
         .setInteractive({ useHandCursor: true });
       this.add
-        .text(x, y, "TANAM SEMUA", {
+        .text(x, y, "PLANT ALL", {
           fontFamily: '"Press Start 2P", monospace',
           fontSize: "7px",
           color: "#f4e2b8",
@@ -489,7 +488,7 @@ export class FarmScene extends Phaser.Scene {
       this.playPlantSfx();
     } else {
       const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
-      this.say(`Masih tumbuh — sekitar ${left} detik lagi.`);
+      this.say(`Still Growing – ${left}s left.`);
     }
   }
 
@@ -533,7 +532,7 @@ export class FarmScene extends Phaser.Scene {
 
   private plant(slot: Slot): boolean {
     if (this.seeds[slot.crop] <= 0) {
-      this.say(`Bibit ${CROPS[slot.crop].name} habis. Beli dulu lewat BUY SEED.`);
+      this.say(`Out of ${CROPS[slot.crop].name} seeds. Get more via BUY SEED.`);
       return false;
     }
     this.seeds[slot.crop] -= 1;
@@ -548,7 +547,7 @@ export class FarmScene extends Phaser.Scene {
     // animasi kecil saat bibit masuk tanah (skala dasar 2x)
     slot.sprite.setScale(CROP_SCALE * 0.6);
     this.tweens.add({ targets: slot.sprite, scale: CROP_SCALE, duration: 220, ease: "Back.easeOut" });
-    this.say(`${CROPS[slot.crop].name} ditanam.`);
+    this.say(`${CROPS[slot.crop].name} planted.`);
     return true;
   }
 
@@ -574,7 +573,7 @@ export class FarmScene extends Phaser.Scene {
         onComplete: () => sprite.destroy(),
       });
     }
-    this.say(`Panen ${CROPS[slot.crop].name}! Masuk inventory.`);
+    this.say(`${CROPS[slot.crop].name} harvested! Sent to inventory.`);
   }
 
   /** Panen satu petak tanpa pesan — dipakai panen berurutan. */
@@ -604,11 +603,11 @@ export class FarmScene extends Phaser.Scene {
   plantAll(crop: CropId) {
     const empty = this.slots.filter((s) => s.crop === crop && s.stage === 0);
     if (empty.length === 0) {
-      this.say(`Lahan ${CROPS[crop].name} sudah penuh.`);
+      this.say(`${CROPS[crop].name} plot is full.`);
       return;
     }
     if (this.seeds[crop] <= 0) {
-      this.say(`Bibit ${CROPS[crop].name} habis. Beli dulu lewat BUY SEEDS.`);
+      this.say(`Out of ${CROPS[crop].name} seeds. Get more via BUY SEED.`);
       return;
     }
 
@@ -643,7 +642,7 @@ export class FarmScene extends Phaser.Scene {
       n += 1;
     }
 
-    this.say(`${n} bibit ${CROPS[crop].name} ditanam.`);
+    this.say(`${n} ${CROPS[crop].name} seeds planted.`);
   }
 
   harvestAll() {
@@ -665,7 +664,7 @@ export class FarmScene extends Phaser.Scene {
   harvestCrop(crop: CropId) {
     const ready = this.slots.filter((s) => s.crop === crop && s.stage === 3);
     if (ready.length === 0) {
-      this.say(`Belum ada ${CROPS[crop].name} yang siap panen.`);
+      this.say(`No ${CROPS[crop].name} ready to harvest yet.`);
       return;
     }
     this.playPlantAllSfx();
@@ -675,20 +674,20 @@ export class FarmScene extends Phaser.Scene {
       this.time.delayedCall(n * HARVEST_STEP_MS, () => this.harvestQuiet(slot));
       n += 1;
     }
-    this.say(`${n} ${CROPS[crop].name} dipanen.`);
+    this.say(`${n} ${CROPS[crop].name} harvested.`);
   }
 
   /** Dipanggil HUD: beli bibit. Mengembalikan false kalau koin kurang. */
   buySeed(crop: CropId, qty: number): boolean {
     const cost = CROPS[crop].seed * qty;
     if (cost > this.coins) {
-      this.say(`Koin tidak cukup. Butuh ${cost} koin.`);
+      this.say(`Not enough coins. Need ${cost} coins.`);
       return false;
     }
     this.coins -= cost;
     this.spent += cost;
     this.seeds[crop] += qty;
-    this.say(`Beli ${qty} bibit ${CROPS[crop].name} — ${cost} koin.`);
+    this.say(`Bought ${qty} ${CROPS[crop].name} seeds – ${cost} coins.`);
     return true;
   }
 

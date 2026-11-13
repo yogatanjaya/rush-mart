@@ -56,6 +56,21 @@ export default function Game() {
   const [world, setWorld] = useState<WorldSnapshot>(EMPTY);
   const [showSeeds, setShowSeeds] = useState(false);
   const [musicOn, setMusicOn] = useState(true);
+
+  // Suara tombol PLAY / PLAY AGAIN / TRY AGAIN
+  useEffect(() => {
+    const snd = new Audio("assets/sfx/play.wav");
+    snd.volume = 0.1;
+    snd.preload = "auto";
+    playBtnSfxRef.current = snd;
+  }, []);
+
+  const playButtonSfx = useCallback(() => {
+    const a = playBtnSfxRef.current;
+    if (!a) return;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  }, []);
   const musicRef = useRef<HTMLAudioElement | null>(null);
   /** SFX saat berpindah tempat (tombol KE FARM / KE MINIMARKET). */
   const navSfxRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +78,7 @@ export default function Game() {
   const navLastRef = useRef(0);
   /** SFX tombol BELI SEMUA di popup Toko Bibit. */
   const buySfxRef = useRef<HTMLAudioElement | null>(null);
+  const playBtnSfxRef = useRef<HTMLAudioElement | null>(null);
   const mutedRef = useRef(false);
 
 
@@ -315,6 +331,7 @@ export default function Game() {
   }, []);
 
   const startGame = useCallback(() => {
+    playButtonSfx();
     startSession();
     setPlaying(true);
     timeUpRef.current = false;
@@ -332,11 +349,6 @@ export default function Game() {
     }
     setPayChange("");
   }, [billTotal, payChange]);
-
-  const buy = useCallback((crop: CropId, n: number) => {
-    const ok = farm()?.buySeed(crop, n);
-    if (ok) setToast(`Bibit ${CROPS[crop].name} +${n}`);
-  }, []);
 
   // Jam bermain: berkurang 1 detik selama ronde berjalan.
   useEffect(() => {
@@ -369,6 +381,7 @@ export default function Game() {
    * Uang, bibit, inventory kembali ke awal; rak diisi ulang; jam mulai lagi.
    */
   const restartRound = useCallback(() => {
+    playButtonSfx();
     resetEconomy();
     timeUpRef.current = false;
     setResult(null);
@@ -409,11 +422,11 @@ export default function Game() {
         <div className="hud-center">
           {world.activeScene === "farm" ? (
             <button className="hud-btn" onClick={() => { playNav(); switchScene("MinimarketScene"); }}>
-              KE MINIMARKET
+              MINIMART
             </button>
           ) : (
             <button className="hud-btn" onClick={() => { playNav(); switchScene("FarmScene"); }}>
-              KE FARM
+              FARM
             </button>
           )}
         </div>
@@ -488,7 +501,7 @@ export default function Game() {
             <div className="seedshop-head">
               <div className="seedshop-title">
                 <img className="seedshop-sprout" src="assets/pixel/icon-pixel-sprout.png" alt="" />
-                <span>TOKO BIBIT</span>
+                <span>SEED STORE</span>
               </div>
               <button className="seedshop-x" onClick={() => setShowSeeds(false)} aria-label="Tutup">
                 X
@@ -498,7 +511,6 @@ export default function Game() {
             <div className="seedshop-rows">
               {CROP_ORDER.map((crop) => {
                 const c = CROPS[crop];
-                const maxAffordable = Math.max(0, Math.floor(world.coins / c.seed));
                 return (
                   <div className="seedshop-row" key={crop}>
                     <img className="seedshop-icon" src={`assets/pixel/icon-packet-${crop}.png`} alt="" />
@@ -525,14 +537,6 @@ export default function Game() {
                         +
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      className="seedshop-buy"
-                      disabled={maxAffordable < qty[crop]}
-                      onClick={() => buy(crop, qty[crop])}
-                    >
-                      Beli
-                    </button>
                   </div>
                 );
               })}
@@ -540,9 +544,9 @@ export default function Game() {
 
             <div className="seedshop-foot">
               <div className="seedshop-total">
-                Total belanja <b>{totalSeedCost} <CoinIcon /></b>
+                GRAND TOTAL <b>{totalSeedCost} <CoinIcon /></b>
                 <span className="seedshop-sep">•</span>
-                saldo <b>{world.coins} <CoinIcon /></b>
+                BALANCE <b>{world.coins} <CoinIcon /></b>
               </div>
               <button
                 type="button"
@@ -555,11 +559,11 @@ export default function Game() {
                       if (farm()?.buySeed(crop, qty[crop])) bought += CROPS[crop].seed * qty[crop];
                     }
                   }
-                  if (bought > 0) { setToast(`Belanja bibit ${bought} koin`); playBuy(); }
+                  if (bought > 0) { setToast(`Seed purchase: ${bought} coins`); playBuy(); }
                   setShowSeeds(false);
                 }}
               >
-                BELI SEMUA
+                BUY ALL
               </button>
             </div>
           </div>
@@ -593,21 +597,21 @@ export default function Game() {
               </div>
 
               <div className="kasir-paid total">
-                <span>Total belanja</span>
+                <span>GRAND TOTAL</span>
                 <b>
                   {billTotal} <CoinIcon />
                 </b>
               </div>
 
               <div className="kasir-paid pay">
-                <span>Dia membayar</span>
+                <span>CUSTOMER PAID</span>
                 <b>
                   {world.store.payment.paid} <CoinIcon />
                 </b>
               </div>
 
               <label className="kasir-field">
-                <span>Kembalian</span>
+                <span>CHANGE</span>
                 <input
                   ref={changeRef}
                   autoFocus
@@ -635,7 +639,7 @@ export default function Game() {
                 disabled={payChange === ""}
                 onClick={submitPay}
               >
-                OKE
+                DONE
               </button>
             </div>
           </div>
@@ -654,11 +658,11 @@ export default function Game() {
             </div>
             <div className="result-rows">
               <div className="result-row ok">
-                <span>Pelanggan dilayani</span>
+                <span>Customers Served</span>
                 <b>{world.store.served}</b>
               </div>
               <div className="result-row bad">
-                <span>Pelanggan gagal</span>
+                <span>Customers Missed</span>
                 <b>{world.store.failed}</b>
               </div>
               <div className="result-row goals">
@@ -683,7 +687,7 @@ export default function Game() {
             <button type="button" className="start-play" onClick={startGame}>
               PLAY
             </button>
-            <div className="start-hint">tekan untuk mulai</div>
+            <div className="start-hint">Press to Play</div>
           </div>
         </div>
       )}

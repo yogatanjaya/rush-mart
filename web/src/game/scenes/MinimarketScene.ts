@@ -545,11 +545,11 @@ export class MinimarketScene extends Phaser.Scene {
 
     if (moved > 0) {
       this.playSfx(this.refillSfx);
-      this.say(`${moved} ${CROPS[crop].name} masuk ke rak.`);
+      this.say(`${moved} ${CROPS[crop].name} added to the shelf.`);
     } else if (economy.inventory[crop] <= 0) {
-      this.say(`Inventory ${CROPS[crop].name} kosong — panen dulu di kebun.`);
+      this.say(`No ${CROPS[crop].name} in inventory – harvest some from the FARM first.`);
     } else {
-      this.say(`Rak ${CROPS[crop].name} sudah penuh.`);
+      this.say(`${CROPS[crop].name} shelf is full.`);
     }
 
     return moved;
@@ -714,7 +714,7 @@ export class MinimarketScene extends Phaser.Scene {
     if (this.storeState !== "closed") return;
     this.storeState = "open";
     this.spawned = 0;
-    this.say("Toko dibuka! WASD untuk jalan, lalu berdiri di TEMPAT KASIR.");
+    this.say("Shop is open! Use WASD to move, then stand at the CASHIER SPOT.");
     this.time.delayedCall(1000, () => this.scheduleWave());
   }
 
@@ -795,7 +795,7 @@ export class MinimarketScene extends Phaser.Scene {
     const profile = Phaser.Utils.Array.GetRandom(NPC_PROFILES);
     const plan = this.buildBasket(profile);
     if (plan.length === 0) {
-      this.say("Rak kosong — pelanggan tidak masuk.");
+      this.say("Shelves are empty – no customers entering, go to FARM.");
       return;
     }
 
@@ -831,7 +831,7 @@ export class MinimarketScene extends Phaser.Scene {
     };
     this.customers.push(c);
     this.spawned++;
-    this.say(`${profile.name} masuk.`);
+    this.say(`${profile.name} entered.`);
   }
 
   /** Titik berdiri di depan satu rak + y lorongnya. */
@@ -985,7 +985,7 @@ export class MinimarketScene extends Phaser.Scene {
               continue;
             }
             if (c.cart.length === 0) {
-              this.say("Rak kosong — pelanggan batal belanja.");
+              this.say("Shelves are empty – customer left without buying.");
               this.leave(c);
               continue;
             }
@@ -1056,9 +1056,9 @@ export class MinimarketScene extends Phaser.Scene {
       economy.loss += loss;
       economy.profit -= loss;
       economy.failed += 1;
-      this.say(`Pelanggan kabur — rugi ${loss} koin.`);
+      this.say(`Customer ran off – lost ${loss} coins.`);
     } else {
-      this.say("Pelanggan pergi — tidak dilayani.");
+      this.say("Customer left – unserved.");
     }
     return loss;
   }
@@ -1111,11 +1111,11 @@ export class MinimarketScene extends Phaser.Scene {
     if (this.paymentRequest) return;
     if (c.state !== "waiting") return;
     if (this.queue[0] !== c) {
-      this.say("Antrian belum giliran dia.");
+      this.say("Not their turn in line yet.");
       return;
     }
     if (!this.isPlayerAtCashier()) {
-      this.say("Berdiri di karpet hijau dulu untuk membuka kasir.");
+      this.say("Stand on the green mat first to open the register.");
       return;
     }
 
@@ -1154,13 +1154,13 @@ export class MinimarketScene extends Phaser.Scene {
       economy.profit += profitDelta;
       economy.served += 1;
       this.floatProfit(profitDelta);
-      this.say(`Pembayaran tepat — ${trueTotal} koin masuk, laba +${profitDelta}.`);
+      this.say(`Correct payment – +${trueTotal} coins earned, profit +${profitDelta}.`);
       this.removeFromQueue(c);
       this.leave(c);
     } else {
       // Salah hitung: pelanggan kesal dan pergi, barangnya hangus.
       this.floatProfit(-this.applyAbandonPenalty(c));
-      this.say(`Hitungan salah — pelanggan pergi.`);
+      this.say(`Incorrect change – customer left.`);
       this.removeFromQueue(c);
       this.leave(c);
     }

@@ -12,10 +12,10 @@ export const CROPS: Record<
   CropId,
   { name: string; icon: string; price: number; seed: number; accent: string }
 > = {
-  jagung: { name: "Jagung", icon: "icon-corn", price: 4, seed: 2, accent: "#f6c945" },
-  tomat: { name: "Tomat", icon: "icon-tomato", price: 6, seed: 4, accent: "#e14b3b" },
-  wortel: { name: "Wortel", icon: "icon-carrot", price: 4, seed: 3, accent: "#e88a2c" },
-  kentang: { name: "Kentang", icon: "icon-potato", price: 6, seed: 3, accent: "#c08a4e" },
+  jagung: { name: "Corn", icon: "icon-corn", price: 4, seed: 2, accent: "#f6c945" },
+  tomat: { name: "Tomato", icon: "icon-tomato", price: 6, seed: 4, accent: "#e14b3b" },
+  wortel: { name: "Carrot", icon: "icon-carrot", price: 4, seed: 3, accent: "#e88a2c" },
+  kentang: { name: "Potato", icon: "icon-potato", price: 6, seed: 3, accent: "#c08a4e" },
 };
 
 export const CROP_ORDER: CropId[] = ["jagung", "tomat", "wortel", "kentang"];
