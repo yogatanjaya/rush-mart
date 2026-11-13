@@ -1242,16 +1242,21 @@
 
 /* Ringkasan cara bermain, di bawah papan (di luar popup). */
 .start-footer {
-  max-width: 560px;
-  padding: 10px 20px 12px;
-  margin: 0 auto;
+  /* menempel di bawah tabir, supaya papan PLAY benar-benar di tengah */
+  position: absolute;
+  left: 50%;
+  bottom: 54px;
+  transform: translateX(-50%);
+  width: min(528px, 92%);
+  padding: 8px 16px 10px;
+  margin: 0;
   background: rgba(22, 13, 6, 0.72);
   border: 2px solid rgba(255, 226, 170, 0.25);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   color: #fdf0d5;
   font-family: "VT323", monospace;
-  font-size: 15px;
-  line-height: 1.42;
+  font-size: 12px;
+  line-height: 1.38;
   text-align: left;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
   opacity: 0.92;
@@ -1259,17 +1264,17 @@
 
 .start-footer-title {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   font-family: "Press Start 2P", monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 8px;
+  letter-spacing: 0.12em;
   color: #ffdf9d;
   text-align: center;
 }
 
 .start-footer ol {
   margin: 0;
-  padding-left: 24px;
+  padding-left: 20px;
 }
 
 .start-footer li {
@@ -1278,6 +1283,8 @@
 
 .start-frame {
   position: relative;
+  /* digeser 5 px ke atas supaya tombol PLAY pas di tengah */
+  transform: translateY(-5px);
   display: flex;
   flex-direction: column;
   align-items: center;

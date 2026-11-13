@@ -51,8 +51,9 @@ const EMPTY: WorldSnapshot = {
 
 /** Ringkasan cara bermain — tampil di bawah papan, di layar PLAY & popup hasil. */
 const HOW_TO_PLAY_STEPS = [
+  "Use WASD (or arrow keys) to walk, and left-click to interact.",
   "Customers walk in and take items off the shelves.",
-  "They line up at the register — click the one at the counter.",
+  "They line up at the QUEUE mat — stand on the green carpet, then click the customer at the front.",
   "Type the correct CHANGE, then press DONE.",
   "Shelves run empty. Go to FARM and click the BUY SEED stall.",
   "Buy seeds, press PLANT ALL, and wait ~15s for the crops.",
