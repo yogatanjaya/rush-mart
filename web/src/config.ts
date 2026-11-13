@@ -1,4 +1,4 @@
-// Pasar Pagi — frontend configuration.
+// Rush Mart — frontend configuration.
 // The contract address is printed by the deploy script (see nearops/v3.json).
 // For the hackathon demo we point at the latest v3 testnet deployment.
 

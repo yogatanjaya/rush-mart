@@ -105,7 +105,7 @@ export default function App() {
         setWallet(await selector.wallet());
       }
       setShowLogin(false);
-      setMsg("Berhasil masuk. Selamat datang di Pasar Pagi!");
+      setMsg("Berhasil masuk. Selamat datang di Rush Mart!");
     } catch (e) {
       setErr("Login gagal: " + String(e).slice(0, 300));
     } finally {
@@ -176,7 +176,7 @@ export default function App() {
     return <div className="fatal">Gagal memuat kontrak: {err}</div>;
   }
 
-  if (!world) return <div className="loading">Memuat Pasar Pagi…</div>;
+  if (!world) return <div className="loading">Memuat Rush Mart…</div>;
 
   return (
     <div className="app">
@@ -184,7 +184,7 @@ export default function App() {
         <div className="brand">
           <span className="logo">🌅</span>
           <div>
-            <h1>Pasar Pagi</h1>
+            <h1>Rush Mart</h1>
             <p>Ekonomi yang hidup di NEAR</p>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function App() {
       {showLogin && (
         <div className="login-overlay" onClick={() => setShowLogin(false)}>
           <div className="login-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Masuk ke Pasar Pagi</h2>
+            <h2>Masuk ke Rush Mart</h2>
             <p className="muted">
               Pakai Meteor Wallet — masuk lewat email, tanpa seed phrase. Dompet ini juga
               menerima hadiah NEAR kalau kamu menang.

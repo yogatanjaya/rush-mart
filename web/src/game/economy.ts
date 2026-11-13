@@ -1,4 +1,4 @@
-// Pasar Pagi — ekonomi bersama antar-scene.
+// Rush Mart — ekonomi bersama antar-scene.
 //
 // Sebelumnya semua angka (koin, bibit, inventory) hidup di dalam FarmScene.
 // Begitu ada MinimarketScene, angka yang sama harus dipakai di dua tempat.

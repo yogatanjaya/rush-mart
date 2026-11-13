@@ -1,4 +1,4 @@
-// Pasar Pagi — penjelasan harga untuk tooltip.
+// Rush Mart — penjelasan harga untuk tooltip.
 // SUMBER KEBENARAN aturan: PRICING.md di root repo. Jangan ubah rumus di sini
 // tanpa mengubah PRICING.md dan contract/src/lib.rs (fn recompute_prices).
 

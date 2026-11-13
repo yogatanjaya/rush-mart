@@ -1,4 +1,4 @@
-// Pasar Pagi — FarmScene (gaya pixel art 16-bit)
+// Rush Mart — FarmScene (gaya pixel art 16-bit)
 //
 // Panggung: kebun top-down dengan 4 lahan 3x3 (jagung, tomat, wortel,
 // kentang). Semua gambar statis — rumput, jalan, pohon, gudang, bingkai
@@ -349,19 +349,9 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private createHint() {
-    const hint = this.add
-      .text(WORLD_W / 2, 704, "WASD / panah untuk jalan  ·  klik petak untuk menanam / memanen", {
-        fontFamily: "Verdana, system-ui, sans-serif",
-        fontSize: "13px",
-        color: "#fff8ec",
-        backgroundColor: "#2b1d0ee0",
-        padding: { x: 12, y: 6 },
-      })
-      .setOrigin(0.5)
-      .setDepth(5);
-    this.tweens.add({ targets: hint, alpha: 0, delay: 7000, duration: 1200 });
+    // Petunjuk kontrol "WASD / panah ..." sudah dihapus atas permintaan
+    // (tertutup bar inventory & tidak diperlukan lagi).
   }
-
   // ─── Aksi pemain ─────────────────────────────────────────────────────────
 
   /** Tenda BUY SEED: kilatan, area klik, dan tombol yang muncul saat dekat. */
@@ -645,17 +635,6 @@ export class FarmScene extends Phaser.Scene {
     this.say(`${n} ${CROPS[crop].name} seeds planted.`);
   }
 
-  harvestAll() {
-    let n = 0;
-    for (const slot of this.slots) {
-      if (slot.stage === 3) {
-        this.harvest(slot);
-        n++;
-      }
-    }
-    this.say(n > 0 ? `${n} tanaman dipanen.` : "Belum ada yang siap panen.");
-  }
-
   /** Panen hanya satu jenis tanaman. */
   /**
    * Panen semua yang siap di lahan itu, satu petak demi satu petak dengan jeda
@@ -677,17 +656,18 @@ export class FarmScene extends Phaser.Scene {
     this.say(`${n} ${CROPS[crop].name} harvested.`);
   }
 
-  /** Dipanggil HUD: beli bibit. Mengembalikan false kalau koin kurang. */
-  buySeed(crop: CropId, qty: number): boolean {
+  /** Dipanggil HUD: beli bibit. Mengembalikan false kalau koin kurang.
+   *  quiet = true dipakai BUY ALL supaya tidak memunculkan 4 pesan beruntun. */
+  buySeed(crop: CropId, qty: number, quiet = false): boolean {
     const cost = CROPS[crop].seed * qty;
     if (cost > this.coins) {
-      this.say(`Not enough coins. Need ${cost} coins.`);
+      if (!quiet) this.say(`Not enough coins. Need ${cost} coins.`);
       return false;
     }
     this.coins -= cost;
     this.spent += cost;
     this.seeds[crop] += qty;
-    this.say(`Bought ${qty} ${CROPS[crop].name} seeds – ${cost} coins.`);
+    if (!quiet) this.say(`Bought ${qty} ${CROPS[crop].name} seeds – ${cost} coins.`);
     return true;
   }
 

@@ -1,4 +1,4 @@
-// Pasar Pagi — MinimarketScene (Tahap 3 · langkah 2 & 3)
+// Rush Mart — MinimarketScene (Tahap 3 · langkah 2 & 3)
 //
 // Panggung toko: lantai keramik, 4 rak kayu (jagung, tomat, wortel, kentang),
 // meja kasir di kanan atas, pintu pelanggan di kanan bawah. Pemain jalan bebas.

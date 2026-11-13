@@ -1,4 +1,4 @@
-// Pasar Pagi — cangkang React untuk game Phaser.
+// Rush Mart — cangkang React untuk game Phaser.
 //
 // React memegang HUD (bar atas, popup bibit, inventory) karena HTML/CSS jauh
 // lebih mudah dirapikan daripada UI di dalam canvas. Phaser memegang dunia:
@@ -48,6 +48,31 @@ const EMPTY: WorldSnapshot = {
   spent: 0,
   notice: null,
 };
+
+/** Ringkasan cara bermain — tampil di bawah papan, di layar PLAY & popup hasil. */
+const HOW_TO_PLAY_STEPS = [
+  "Customers walk in and take items off the shelves.",
+  "They line up at the register — click the one at the counter.",
+  "Type the correct CHANGE, then press DONE.",
+  "Shelves run empty. Go to FARM and click the BUY SEED stall.",
+  "Buy seeds, press PLANT ALL, and wait ~15s for the crops.",
+  "While waiting, go back to MART and serve the queue (each customer waits about 20–40 seconds).",
+  "Harvest, return to MART, and click each shelf to restock.",
+  "Reach GOALS 100/100 before the 150-second timer ends.",
+];
+
+function HowToPlay() {
+  return (
+    <div className="start-footer">
+      <b className="start-footer-title">HOW TO PLAY</b>
+      <ol>
+        {HOW_TO_PLAY_STEPS.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 export default function Game() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -556,7 +581,7 @@ export default function Game() {
                   let bought = 0;
                   for (const crop of CROP_ORDER) {
                     if (world.coins - bought >= CROPS[crop].seed * qty[crop]) {
-                      if (farm()?.buySeed(crop, qty[crop])) bought += CROPS[crop].seed * qty[crop];
+                      if (farm()?.buySeed(crop, qty[crop], true)) bought += CROPS[crop].seed * qty[crop];
                     }
                   }
                   if (bought > 0) { setToast(`Seed purchase: ${bought} coins`); playBuy(); }
@@ -676,6 +701,7 @@ export default function Game() {
               {result === "success" ? "PLAY AGAIN" : "TRY AGAIN"}
             </button>
           </div>
+          <HowToPlay />
         </div>
       )}
 
@@ -683,12 +709,13 @@ export default function Game() {
       {!playing && (
         <div className="start-backdrop">
           <div className="start-frame" role="dialog" aria-label="Mulai permainan">
-            <div className="start-title">PASAR PAGI</div>
+            <div className="start-title">RUSH MART</div>
             <button type="button" className="start-play" onClick={startGame}>
               PLAY
             </button>
             <div className="start-hint">Press to Play</div>
           </div>
+          <HowToPlay />
         </div>
       )}
         </div>

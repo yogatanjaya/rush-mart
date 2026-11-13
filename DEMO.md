@@ -15,7 +15,7 @@ Kalimat di bawah = teks overlay / narasi. Durasi kira-kira.
 ### 0:00–0:08 — Hook (tanpa klik apa pun)
 
 > **Teks:** "Game ekonomi biasanya cuma tempel token di atas game biasa."
-> **Teks:** "Di Pasar Pagi, ekonominya sendiri yang jadi gameplay."
+> **Teks:** "Di Rush Mart, ekonominya sendiri yang jadi gameplay."
 > **Teks:** "Semua angka di layar ini live dari NEAR testnet."
 
 Tampilkan halaman utama. Sorot angka Hari, harga, dan daftar NPC.
@@ -76,7 +76,7 @@ Fast-forward beberapa hari → tunjukkan **payout masuk ke koin pemain** dan ent
 
 > **Teks:** "Kerja → belanja → pedagang untung → restock → kerja lagi."
 > **Teks:** "Roda kehidupan. Di NEAR. Semua on-chain."
-> **Teks:** "Pasar Pagi — NEAR Hackathon 2026."
+> **Teks:** "Rush Mart — NEAR Hackathon 2026."
 
 Tampilkan grafik harga 7 hari terakhir sebagai bukti ekonomi bergerak sendiri.
 
@@ -104,7 +104,7 @@ Wajib: tag **@NEARProtocol** dan pakai **#NEARHackathon**. Tambahkan link repo +
 ### Post utama (≤ 280 karakter)
 
 ```
-Kami bikin Pasar Pagi untuk #NEARHackathon.
+Kami bikin Rush Mart untuk #NEARHackathon.
 
 Bukan game yang ditempeli token — ekonominya sendiri yang jadi gameplay.
 
@@ -151,7 +151,7 @@ Demo 90 detik + repo: [LINK]
 ### Alternatif post pendek (kalau thread terlalu panjang)
 
 ```
-Pasar Pagi: game di mana uang benar-benar berputar.
+Rush Mart: game di mana uang benar-benar berputar.
 
 Pekerja dapat upah → belanja → pedagang untung → restock.
 Toko bangkrut? Kamu bisa jadi investor dan dapat bagi hasil.

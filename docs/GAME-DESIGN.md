@@ -1,4 +1,4 @@
-# GAME DESIGN — Pasar Pagi (konsep baru)
+# GAME DESIGN — Rush Mart (konsep baru)
 
 > Dokumen keputusan. Setiap baris di sini sudah disetujui. Kalau ada perubahan, ubah di sini dulu.
 > Terakhir diperbarui: 9 Nov 2026.

@@ -1,4 +1,4 @@
-# Profiling NPC Pasar Pagi
+# Profiling NPC Rush Mart
 
 Rancangan belanja 7 warga desa untuk minimarket. Tujuannya: **keranjang belanja
 campur** (bukan 1 jenis barang lagi), dengan kepribadian yang berbeda-beda.

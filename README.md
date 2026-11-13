@@ -1,225 +1,271 @@
-# Pasar Pagi — Roda Kehidupan Sehari-hari
+# Rush Mart
 
-> Game simulasi ekonomi di NEAR. Uang benar-benar berputar: pekerja dapat upah →
-> belanja → pedagang dapat uang → restock → pekerja lain dapat kerja.
-> Kalau toko bangkrut, pemain bisa menyuntik modal dan dapat bagi hasil.
+> A 2.5-minute pixel-art shop sim for NEAR Hackathon 2026 (track: `games`).
+> **Grow it, stock it, sell it — before the clock runs out.**
 
-**NEAR Hackathon 2026 — track `games`** ("the economy is the gameplay").
-Contract: **`pasar-pagi-17536.testnet`** (NEAR Testnet).
-License: MIT.
+Rush Mart is a single-player, browser-based management game. You run a tiny
+neighborhood minimarket **and** the farm that feeds it. Customers walk in, take
+items off your shelves, and queue at the register. Every item they take is money
+you only get if you serve them correctly — and every shelf you empty has to be
+refilled with crops you planted yourself.
+
+One round lasts **150 seconds**. You win by reaching a **net profit goal of 100
+coins** before the timer hits zero.
 
 ---
 
-## 1. Ringkasan untuk mesin (TL;DR — do X, see Y)
+## 1. Machine-readable TL;DR (do X, see Y)
 
-Bagian ini ditulis supaya coding agent (Claude Code / Codex) bisa memverifikasi
-project tanpa menebak. Semua perintah dijalankan dari root repo.
-
-| # | Lakukan ini | Lihat hasil ini |
+| # | Command | Expected result |
 |---|---|---|
-| 1 | `node scripts/verify.mjs` | Print state on-chain + 5 baris `PASS`, lalu `OK: contract hidup dan state valid.` Exit code 0. Tidak butuh wallet/secret key. |
-| 1b | `curl -s -X POST https://rpc.testnet.near.org -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"call_function","finality":"final","account_id":"pasar-pagi-17536.testnet","method_name":"get_world","args_base64":""}}'` | JSON berisi `day`, `event`, `prices`, `npcs`, `history`, `log`. Contract hidup. |
-| 2 | decode `result.result` (array byte) → JSON | `day` ≥ 1, `prices` berisi 5 item (`beras`, `sayur`, `makanan`, `kain`, `pakaian`), `npcs` berisi 5 NPC. |
-| 3 | `cd web && npm install && npm run build` | exit code 0, `vite build` selesai. |
-| 4 | `cd web && npm run dev` | server di `http://127.0.0.1:5173`, halaman Pasar Pagi tampil dengan data **live** dari testnet. |
-| 5 | Baca `PRICING.md` | aturan harga NPC lengkap di satu file; rumus + contoh angka yang bisa dihitung ulang. |
-| 6 | Hover harga di halaman Pasar | tooltip menjelaskan **kenapa** harga naik/turun (stok tipis, event, dll). |
-| 7 | Klik aksi → **Jalankan hari** | satu persetujuan wallet untuk semua aksi yang diantrikan; state hari maju. |
-| 8 | Klik **Fast-forward** | simulasi banyak hari sekaligus (satu persetujuan). |
+| 1 | `cd web && npm install` | dependencies installed |
+| 2 | `cd web && npm run dev` | dev server on `http://127.0.0.1:5173`, PLAY screen appears |
+| 3 | `cd web && npx tsc --noEmit` | no output (types clean) |
+| 4 | `cd web && npm run build` | `dist/` produced, build succeeds |
+| 5 | open the page, press **PLAY** | round starts, timer at `02:30` |
+
+Requires Node 18+ and a browser. No backend, no database, no API keys.
 
 ---
 
-## 2. Masalah yang dipecahkan
+## 2. The two places
 
-Game ekonomi di blockchain biasanya cuma menempelkan token hadiah di atas game biasa.
-Di Pasar Pagi, **ekonominya sendiri yang jadi gameplay**:
+The game is one screen with two locations you switch between with a HUD button.
 
-- Setiap NPC punya **dompet, kas, dan stok sendiri** (akun NEAR sungguhan di testnet).
-- Harga bergerak karena **stok vs permintaan**, bukan karena angka hardcoded.
-- Aksi pemain benar-benar menggeser harga: membanjiri pasar dengan beras → beras murah.
-- Toko yang salah kelola **bangkrut** dan tutup. Pemain bisa **investasi** untuk buka lagi
-  dan dapat **30% bagi hasil** dari revenue harian toko itu.
-- Pemain tidak perlu tahu ini blockchain — login pakai email, chain-nya invisible.
+**MINIMART** — the store floor. Four shelves (Corn, Tomato, Carrot, Potato),
+a red QUEUE carpet, a cashier counter, and an ENTRY door. Customers spawn at the
+door, walk to shelves, pick items, and queue up.
+
+**FARM** — four plots of land (3 × 5 slots each), a dirt road, and a **BUY SEED**
+stall on the left edge. You buy seeds, plant them, wait for them to grow, and
+harvest them into your inventory.
+
+Your money, seeds, and harvested crops are **shared** between the two places —
+switching scenes never resets anything, and crops keep growing while you are
+inside the minimarket.
 
 ---
 
-## 3. Peran ekonomi (NPC)
+## 3. Core loop
 
-| Peran | Fungsi ekonomi |
+```
+  buy seeds at the stall
+          ↓
+  plant them  (15 s to grow)
+          ↓
+  harvest → crops go to your inventory
+          ↓
+  carry them into the minimarket and refill the shelves
+          ↓
+  customers take items and queue at the register
+          ↓
+  you stand on the green mat, click the customer,
+  type the correct change, press DONE
+          ↓
+  profit counts toward GOALS 100/100
+```
+
+The tension is that all five jobs — buying, planting, harvesting, restocking,
+and running the register — happen inside the same 150 seconds.
+
+---
+
+## 4. Controls
+
+| Input | Action |
 |---|---|
-| **Petani** (`paktani`) | Jual bahan mentah; stok tergantung musim |
-| **Pedagang pasar** (`bupasar`) | Beli dari petani, jual ke warga; harga naik kalau stok tipis |
-| **Rumah makan** (`busari`) | Beli bahan, jual makanan jadi; bisa bangkrut kalau bahan terlalu mahal |
-| **Pabrik** (`pabrik`) | Produksi kain & pakaian |
-| **Warga pekerja** (`warga`) | Punya gaji, belanja rutin → inilah yang menggerakkan *demand* |
-| **Pemain** | Kerja → dapat koin → belanja/jual → investasi toko bangkrut |
-
-Setiap NPC adalah akun NEAR testnet: `paktani.pasar-pagi-17536.testnet`, dst.
-
----
-
-## 4. Requirement hackathon — status
-
-| Requirement resmi | Status | Di mana |
-|---|---|---|
-| Item = **NEP-245 multi token** (satu contract semua item) | ✅ | `contract/src/lib.rs` — `mt_balance_of`, `mt_transfer`, `mt_batch_transfer`, `mt_supply` |
-| **Login email / social** — tanpa seed phrase | ✅ | Meteor Wallet via wallet selector; login lewat email + OTP, tanpa seed phrase |
-| Gas prompt tidak muncul di loop normal | ⚠️ Sebagian | Semua aksi hari itu di-batch jadi **satu approval per hari in-game** (bukan per klik). Fast-forward juga satu approval. Bukan zero-popup penuh — lihat bagian 8 |
-| **Aturan harga NPC di satu file readable** + tooltip alasan | ✅ | `PRICING.md` + `web/src/pricing.ts` + tooltip di UI |
-| **Fast-forward** seminggu trading dalam 1 menit | ✅ | `fast_forward(days)` di contract + tombol Fast-forward di UI |
+| `W A S D` / arrow keys | walk (both locations) |
+| click a farm plot | plant one seed, or harvest a ripe crop |
+| `PLANT ALL` (per plot) | plants seeds into every empty slot, one by one |
+| `HARVEST` (per plot, vertical button) | harvests every ripe slot, one by one |
+| click the BUY SEED stall (while standing in front of it) | opens the seed store |
+| click a shelf | refill that shelf from your inventory of that crop |
+| stand on the green cashier mat + click a queued customer | opens the payment panel |
+| HUD `FARM` / `MINIMART` | switch location |
+| HUD `♪ ON` / `♪ OFF` | toggle background music |
 
 ---
 
-## 5. Game loop (30 detik / 5 menit / 1 sesi)
+## 5. Economy
 
-| Rentang | Yang dilakukan pemain |
+| Crop | Seed cost | Sell price | Profit per item |
+|---|---|---|---|
+| Corn | 2 | 4 | +2 |
+| Tomato | 4 | 6 | +2 |
+| Carrot | 3 | 4 | +1 |
+| Potato | 3 | 6 | +3 |
+
+- **Starting cash:** 200 coins.
+- **Goal:** net profit of **100 coins**.
+- Net profit = (sell price − seed cost) for every item successfully sold,
+  minus penalties. Buying seeds does **not** reduce GOALS — it only moves coins;
+  the seed cost is subtracted when the item is sold.
+
+---
+
+## 6. Round rules
+
+| Rule | Value |
 |---|---|
-| **30 detik** | Pilih aksi: kerja shift, istirahat, beli bahan, jual barang, atau investasi toko bangkrut |
-| **5 menit** | Satu hari in-game lewat; harga update; NPC memberi sinyal ("stok beras habis, harga naik") |
-| **1 sesi** | Beberapa hari in-game; event muncul (gagal panen / festival / paceklik) yang memaksa pemain ubah strategi |
+| Round length | **150 s** (clock counts down from `02:30`) |
+| Win condition | GOALS ≥ 100 when the clock hits `00:00` |
+| Coins floor | coins can never go below **0** |
+| GOALS floor | GOALS **can go negative** (shown as e.g. `-12/100`) |
 
-Aksi yang tersedia (enum `Action` di contract):
+**Penalties.** If a customer leaves without paying — either because their
+patience ran out, or because you typed the wrong change — their whole basket is
+lost and you are charged **the full seed cost** of every item they were carrying.
+That loss hits both your coins and your GOALS.
 
-```rust
-pub enum Action {
-    Work,                                        // kerja → dapat koin, energi turun
-    Rest,                                        // istirahat → energi pulih
-    Buy  { item_id: String, qty: u32 },          // beli dari pasar (harga retail)
-    Sell { item_id: String, qty: u32 },          // jual ke pasar (90% harga retail)
-    Invest { npc_id: String },                   // suntik modal ke toko bangkrut
-}
-```
-
----
-
-## 6. Aturan harga (ringkas — lengkap di `PRICING.md`)
-
-```
-harga = base_price × (100 + scarcity_pct)/100 × (100 + event_pct)/100
-```
-
-- `scarcity_pct`: **+60%** kalau stok < target/5, **−40%** kalau stok > target×6, selain itu **0%**.
-- `event_pct`: gagal panen +40% (beras/sayur), festival +50% (makanan/pakaian), paceklik −20% (semua).
-- Pemain beli di harga retail; pemain jual di **90%** harga retail (margin pedagang 10%).
-- Semua rumus dan contoh angka ada di **`PRICING.md`**; UI menampilkan alasannya lewat tooltip.
+**Result screen.** At `00:00` a board appears with three numbers:
+`Customers Served`, `Customers Missed`, and the final `GOALS`, plus
+`PLAY AGAIN` (win) or `TRY AGAIN` (loss). Either button fully resets the run,
+including shelves back to their starting stock.
 
 ---
 
-## 7. Arsitektur teknis
+## 7. Farm details
 
-```
-contract/                 Rust smart contract (NEAR SDK 5.30.1)
-  src/lib.rs              NEP-245 multi token + logika ekonomi kota
-  Cargo.toml
-web/                      Frontend React 19 + Vite 8 + TypeScript
-  src/config.ts           CONTRACT_ID, network, daftar item & NPC
-  src/near.ts             baca state via JSON-RPC, tulis via wallet selector
-  src/pricing.ts          penjelasan harga untuk tooltip (mirror PRICING.md)
-  src/App.tsx             UI game: pasar, NPC, antrian aksi, grafik harga
-  src/polyfills.ts        polyfill Buffer/process untuk NEAR SDK di browser
-PRICING.md                aturan harga NPC (satu file, sumber kebenaran)
-GAME-LOOP.md              rancangan game loop di atas kertas
-TECHNICAL-DESIGN.md       keputusan teknis & trade-off
-HACKATHON.md              aturan resmi hackathon
-```
-
-**Alur data:** UI → `near.ts` → RPC `call_function` ke contract → JSON `WorldView`
-(`day`, `event`, `prices`, `npcs`, `history`, `log`). Transaksi ditandatangani
-wallet selector (Meteor), dikirim sebagai satu `functionCall` berisi array aksi.
+- **4 plots**, one per crop, **15 slots each** (3 rows × 5 columns).
+- **Growth time: 15 seconds** (two visible growth stages of 7.5 s).
+- Seeds are **only** bought at the BUY SEED stall inside the farm map — walk up
+  to it and click it; the store panel opens. (There is no floating button; the
+  stall is a building in the world.)
+- The seed store defaults to **15 of each crop** and has one `BUY ALL` button.
+  `GRAND TOTAL` and `BALANCE` are shown at the bottom.
+- `PLANT ALL` plants one seed every **110 ms** until the plot is full, so you can
+  watch it fill up. `HARVEST` does the same in reverse.
+- Harvested crops go into an **8-slot inventory bar** pinned to the bottom of the
+  map: the first four slots are harvested produce, the last four are seed packets,
+  each with a quantity counter.
 
 ---
 
-## 8. Login & batasan yang jujur
+## 8. Store details
 
-- Login memakai **Meteor Wallet** lewat NEAR Wallet Selector. User masuk dengan
-  **email + kode OTP**, tanpa seed phrase.
-- **Satu approval per hari in-game.** Pemain mengantrikan beberapa aksi di UI,
-  lalu menyetujui satu transaksi yang mengirim semuanya. Fast-forward juga satu approval.
-- **Bukan zero-popup penuh.** Zero-popup sesungguhnya butuh session key + relayer gas
-  (2–3 hari kerja tambahan). Itu ditulis sebagai roadmap, bukan diklaim sudah ada.
-- Frontend memakai polyfill (`Buffer`, `process`, `global`) karena NEAR SDK masih
-  mengharapkan global Node.js.
+- **4 shelves × 15 slots** (3 rows × 5 columns).
+- **Opening stock:** Corn 11, Tomato 10, Carrot 12, Potato 10 (43 items total).
+- Clicking a shelf moves as much of that crop as possible from your inventory into
+  the shelf, up to 15.
+- When a shelf drops to **8 items or fewer**, a blinking `FILL YOUR DISPLAY` hint
+  appears at the bottom inside the shelf.
+- Each shelf shows a price board and a `n/15` badge.
 
----
+**Customers.** Each customer:
+1. spawns at the ENTRY door (aligned with the QUEUE carpet),
+2. picks **1–3 different crops** (60% nearest shelf, 40% random), stopping about
+   **1 second** per shelf,
+3. walks into the queue (up to **5 people** deep — the carpet only covers the
+   first two, the rest queue on the floor),
+4. waits with **20–40 seconds of patience**.
 
-## 9. Menjalankan sendiri (reproduksi)
+Traffic comes in **waves of 2–3 customers**, one or two seconds apart, plus one
+extra customer halfway through the gap. Waves are separated by **15–25 seconds**,
+and the first wave arrives **1 second** after the round starts.
 
-### Prasyarat
-- Node.js 20+ dan npm
-- (Untuk build contract) Rust + target `wasm32-unknown-unknown`; di Windows paling
-  mudah lewat WSL Ubuntu. Build butuh linker — di Windows native sering gagal.
-
-### Frontend
-```bash
-# verifikasi on-chain tanpa wallet (paling cepat)
-node scripts/verify.mjs
-
-cd web
-npm install
-npm run dev          # http://127.0.0.1:5173
-npm run build        # production build, harus exit 0
-```
-
-`web/vite.config.ts` mem-proxy `/near-rpc` ke `https://rpc.testnet.near.org`
-supaya tidak kena CORS saat development.
-
-### Contract (Rust → wasm)
-```bash
-cd contract
-cargo build --target wasm32-unknown-unknown --release
-# output: target/wasm32-unknown-unknown/release/pasar_pagi.wasm
-```
-
-### Deploy + init (contoh dengan near-cli atau near-api-js)
-```bash
-near deploy pasar-pagi-17536.testnet \
-  target/wasm32-unknown-unknown/release/pasar_pagi.wasm
-
-near call pasar-pagi-17536.testnet new '{"owner_id":"pasar-pagi-17536.testnet"}' \
-  --accountId pasar-pagi-17536.testnet
-```
-
-> Catatan: contract memakai `#[init(ignore_state)]`, jadi `new` bisa dipanggil ulang
-> untuk reset state demo. Storage prefix di-scope ke `block_height` deploy supaya
-> setiap deploy baru mulai dari hari 1 dengan state bersih.
+**Cashier.** Stand on the green mat and click the customer at the front of the
+queue. The panel shows:
+- `GRAND TOTAL` — computed automatically from the basket (read-only),
+- `CUSTOMER PAID` — what they hand you (fixed),
+- `CHANGE` — you type it, then press `DONE`.
+Correct change = full sale. Wrong change = the customer leaves and you take the
+seed-cost penalty.
 
 ---
 
-## 10. Verifikasi on-chain (yang sudah terbukti)
+## 9. Feedback (juice)
 
-| Uji | Hasil |
+- Floating **`+N`** in green above the counter on a successful sale, **`−N`** in
+  red on a penalty — both drift upward and fade out.
+- Sound effects (all short, all mixed at low volume):
+  door whoosh on location switch, bell for every customer entering, wooden knock
+  when you tap the seed stall, register sound on `BUY ALL`, a soft wood tap when
+  restocking a shelf, a deep "pop" when planting/harvesting a single slot, a
+  4-beat sequence for `PLANT ALL` / `HARVEST`, coin chime on profit, buzz on loss.
+- A looping background track starts on the first click (browser autoplay rules)
+  and can be muted with the HUD music button.
+- The notice bar is a pixel-art wooden signboard; it reports growth timers,
+  restocks, arrivals, and every penalty.
+
+---
+
+## 10. Tech stack
+
+| Layer | Choice |
 |---|---|
-| Deploy + init | ✅ `pasar-pagi-17536.testnet` hidup, `get_world` balikin state lengkap |
-| Register pemain | ✅ 100 koin awal, energi 100 |
-| Kerja + beli + jual | ✅ koin bertambah, stok & harga bergerak |
-| Fast-forward 40 hari | ✅ hari maju, event berganti |
-| Bangkrut | ✅ kas NPC minus → toko tutup (`open: false`) |
-| Investasi | ✅ pemain beli saham toko bangkrut → toko buka lagi |
-| Bagi hasil 30% | ✅ payout muncul di log, koin pemain bertambah |
+| Rendering | **Phaser 3** — two scenes (`FarmScene`, `MinimarketScene`) kept alive side by side, one is brought to front |
+| UI / HUD | **React + TypeScript**, overlaid on the canvas |
+| Build | **Vite** |
+| Art | 100 % procedurally generated pixel art (`web/scripts/gen_pixel_assets.py`, `gen_market_assets.py`) — no third-party sprites |
+| Audio | Mix of self-synthesised SFX (Python) and royalty-free files; played through `HTMLAudioElement` |
+| Fonts | Press Start 2P + VT323 |
 
-Contoh log nyata dari contract (hari 60–62):
+**Why the UI is separate from the canvas.** Phaser draws the world; React draws
+the HUD, popups, and the inventory bar. They talk through two small bridges:
+`web/src/game/ui.ts` (scene → React, e.g. "open the seed store") and scene
+methods called from React (`buySeed`, `startSession`, …).
+
+**Responsive scaling.** Everything is authored in a fixed 1280 × 720 space. The
+canvas is `Phaser.Scale.FIT`, and the HUD, the popups, and the inventory bar live
+in absolutely-positioned layers of exactly 1280 × 720 that are `transform:
+scale()`d by `stageWidth / 1280`. The result: HUD, modals, and world always share
+one scale, at any window size.
+
+**Audio gotcha.** Phaser's sound manager stays locked until the *canvas* is
+clicked, and this game is driven by React buttons — so every sound is played
+through `HTMLAudioElement` instead, with a single-player + minimum-gap policy on
+long sounds so spamming a button cannot stack into distortion.
+
+---
+
+## 11. Project structure
 
 ```
-Hari 60: bupasar tekor, kas minus 22 koin.
-Hari 60: bupasar BANGKRUT dan tutup toko. Butuh investor.
-Hari 61: Pabrik memproduksi 4 kain, 2 pakaian.
-Hari 62: Pabrik memproduksi 4 kain, 2 pakaian.
+web/
+  src/
+    Game.tsx                    # React shell: canvas mount, HUD, popups, audio
+    game.css                    # all UI styling (pixel-art frames, HUD layers)
+    game/
+      types.ts                  # crops, prices, shared constants
+      economy.ts                # single source of truth for coins/seeds/crops
+      flow.ts                   # round state (playing / stopped)
+      ui.ts                     # scene → React bridge
+      scenes/FarmScene.ts       # farm: plots, growth, stall, inventory
+      scenes/MinimarketScene.ts # store: shelves, NPCs, queue, cashier
+  scripts/
+    gen_pixel_assets.py         # farm background, crops, icons
+    gen_market_assets.py        # store background, shelves, counter
+  public/assets/                # generated PNGs + SFX + music
+contract/                       # NEAR smart contract (Rust, NEP-245 style)
+docs/                           # design notes, backlog, screenshots
 ```
 
 ---
 
-## 11. Yang belum dikerjakan / roadmap
+## 12. NEAR status (honest)
 
-- Zero-popup login penuh (session key + relayer gas) — ditulis sebagai roadmap.
-- Frontend belum punya halaman investasi khusus; investasi lewat aksi antrian.
-- Belum ada leaderboard / pencapaian.
-- Multi-pemain simultan belum diuji beban.
+The Rust contract in `contract/` is **deployed to NEAR testnet** at
+`pasar-pagi-17536.testnet` and responds to `get_world`. The account name is a
+leftover from the project's first title and is kept because the account already
+exists on-chain.
+
+**The contract is not yet wired into gameplay.** Rush Mart currently runs fully
+client-side; wallet connection and on-chain state (recording finished runs) are
+the next milestone, not a shipped feature. Nothing in this README claims
+otherwise.
 
 ---
 
-## 12. Dokumen lain
+## 13. Roadmap
 
-- `PRICING.md` — aturan harga NPC (wajib dibaca juri/AI).
-- `GAME-LOOP.md` — rancangan loop 30 detik / 5 menit / 1 sesi.
-- `TECHNICAL-DESIGN.md` — keputusan arsitektur dan trade-off.
-- `DEMO.md` — skrip video demo + rencana post X.
+1. Wallet connect (NEAR) + record each finished run on-chain.
+2. Save/restore run summary as a permanent leaderboard entry.
+3. More crops, more customer archetypes, price events.
+4. Mobile/touch controls.
+5. Localisation (Indonesian + English).
+
+---
+
+## License
+
+MIT.

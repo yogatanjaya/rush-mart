@@ -1,4 +1,4 @@
-// Shapes returned by the Pasar Pagi contract (JSON over RPC).
+// Shapes returned by the Rush Mart contract (JSON over RPC).
 
 export type U128 = string;
 

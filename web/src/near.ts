@@ -1,4 +1,4 @@
-// NEAR client for Pasar Pagi.
+// NEAR client for Rush Mart.
 // Reads use raw JSON-RPC (robust in the browser); writes go through the wallet selector.
 
 import { actionCreators } from "@near-js/transactions";

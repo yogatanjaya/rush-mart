@@ -1,4 +1,4 @@
-// Pasar Pagi — tipe & konstanta bersama antara scene Phaser dan HUD React.
+// Rush Mart — tipe & konstanta bersama antara scene Phaser dan HUD React.
 
 export type CropId = "jagung" | "tomat" | "wortel" | "kentang";
 

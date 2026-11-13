@@ -1,4 +1,4 @@
-# Pasar Pagi — Aturan Harga NPC (satu file, bisa dibaca mesin)
+# Rush Mart — Aturan Harga NPC (satu file, bisa dibaca mesin)
 
 > Requirement hackathon: *"Aturan harga NPC di satu file readable + tooltip alasan harga."*
 > File ini adalah **satu-satunya sumber kebenaran** untuk harga. Implementasi kontrak ada di

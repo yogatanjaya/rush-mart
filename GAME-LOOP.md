@@ -1,4 +1,4 @@
-# PASAR PAGI — Rancangan Game Loop (v1, 6 Nov 2026)
+# RUSH MART — Rancangan Game Loop (v1, 6 Nov 2026)
 
 > Track: `games` — "the economy is the gameplay"
 > Panggung: satu pasar kecil + kota. Roda kehidupan: petani → pedagang → rumah makan → warga pekerja → balik lagi.
@@ -142,7 +142,7 @@ Alasan: 8 hari. Fitur di atas bikin demo nggak fokus. Dicatat sebagai roadmap = 
 
 ## Keputusan Sutradara (6 Nov 2026)
 
-1. **Nama:** Pasar Pagi
+1. **Nama:** Rush Mart
 2. **Rasa/visual:** ringan & lucu — kartun, warna cerah, paling aman untuk demo
 3. **Pemain mulai:** warga biasa, modal 100 koin (roda kehidupan paling kerasa)
 4. **Panggung:** pasar kecil + kota (petani, pedagang, rumah makan, warga pekerja)

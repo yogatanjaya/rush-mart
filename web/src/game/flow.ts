@@ -1,4 +1,4 @@
-// Pasar Pagi — penanda alur sesi.
+// Rush Mart — penanda alur sesi.
 //
 // Game tidak langsung bisa dimainkan: scene kebun/minimarket sudah tampil, tapi
 // pemain beku sampai menekan tombol PLAY. Semua penanganan gerak dan klik

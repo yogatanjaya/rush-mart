@@ -1,4 +1,4 @@
-# PASAR PAGI — Technical Design (v1, 6 Nov 2026)
+# RUSH MART — Technical Design (v1, 6 Nov 2026)
 
 Status: menunggu approval Sutradara sebelum scaffolding.
 Deadline submission: **14 Nov 2026 23:59 UTC** (sisa ~8 hari).
