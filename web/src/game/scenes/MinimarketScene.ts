@@ -71,7 +71,8 @@ const PATIENCE_MAX_MS = 40000;
 const BILLS = [10, 20, 50, 100];
 
 /** Pemain harus berdiri di karpet hijau ini (di belakang meja) supaya bisa melayani. */
-const CASHIER_ZONE = { x: 936, y: 152, w: 96, h: 40 };
+/** Kotak karpet hijau di latar: dipakai untuk sorotan DAN area pemain berdiri. */
+const CASHIER_MAT = { x: 916, y: 140, w: 128, h: 56 };
 /** Tempat pelanggan berdiri saat membayar (di atas karpet, x = 980). */
 const QUEUE_SLOTS = [
   { x: 980, y: 320 },
@@ -104,7 +105,7 @@ interface NpcProfile {
 const NPC_PROFILES: NpcProfile[] = [
   {
     design: "ibu",
-    name: "Ibu desa",
+    name: "Village Woman",
     minKinds: 2,
     maxKinds: 3,
     minQty: 2,
@@ -113,7 +114,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "petani",
-    name: "Petani tua",
+    name: "Old Farmer",
     minKinds: 1,
     maxKinds: 2,
     minQty: 1,
@@ -122,7 +123,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "gadis",
-    name: "Gadis desa",
+    name: "Village Girl",
     minKinds: 2,
     maxKinds: 2,
     minQty: 1,
@@ -131,7 +132,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "pemuda",
-    name: "Pemuda",
+    name: "Young Man",
     minKinds: 2,
     maxKinds: 3,
     minQty: 1,
@@ -140,7 +141,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "pemuda_desa",
-    name: "Pemuda desa",
+    name: "Village Youth",
     minKinds: 2,
     maxKinds: 2,
     minQty: 3,
@@ -149,7 +150,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "nenek",
-    name: "Nenek desa",
+    name: "Village Grandma",
     minKinds: 1,
     maxKinds: 2,
     minQty: 1,
@@ -158,7 +159,7 @@ const NPC_PROFILES: NpcProfile[] = [
   },
   {
     design: "anak",
-    name: "Anak kecil desa",
+    name: "Village Kid",
     minKinds: 1,
     maxKinds: 1,
     minQty: 1,
@@ -239,6 +240,9 @@ export class MinimarketScene extends Phaser.Scene {
   private pendingCustomer: Customer | null = null;
   private paymentSeq = 0;
   private cashierMat: Phaser.GameObjects.Rectangle | null = null;
+  /** Tulisan "STAY HERE / PRESS NPC" di dalam panel karpet kasir. */
+  private cashierHint: Phaser.GameObjects.Text | null = null;
+  private matBlink: Phaser.Tweens.Tween | null = null;
 
   constructor() {
     // active: false → scene terdaftar tapi tidak ikut start otomatis.
@@ -345,6 +349,8 @@ export class MinimarketScene extends Phaser.Scene {
     this.notice = null;
     this.noticeUntil = 0;
     this.cashierMat = null;
+    this.cashierHint = null;
+    this.matBlink = null;
   }
 
   /**
@@ -574,14 +580,36 @@ export class MinimarketScene extends Phaser.Scene {
 
     this.cashierMat = this.add
       .rectangle(
-        CASHIER_ZONE.x + CASHIER_ZONE.w / 2,
-        CASHIER_ZONE.y + CASHIER_ZONE.h / 2,
-        CASHIER_ZONE.w,
-        CASHIER_ZONE.h,
+        CASHIER_MAT.x + CASHIER_MAT.w / 2,
+        CASHIER_MAT.y + CASHIER_MAT.h / 2,
+        CASHIER_MAT.w,
+        CASHIER_MAT.h,
         0xffffff,
         0
       )
       .setDepth(1.5);
+
+    // Tulisan di dalam panel: tampil hanya saat ada pelanggan menunggu
+    // dan pemain belum berdiri di karpet kasir.
+    this.cashierHint = this.add
+      .text(
+        CASHIER_MAT.x + CASHIER_MAT.w / 2,
+        CASHIER_MAT.y + CASHIER_MAT.h / 2,
+        "STAY HERE\nPRESS NPC",
+        {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: "7px",
+          color: "#eafff2",
+          align: "center",
+          lineSpacing: 4,
+          stroke: "#0d2a1a",
+          strokeThickness: 3,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(1.6)
+      .setVisible(false);
+
 
     const block = this.add.rectangle(
       COUNTER.x + COUNTER.w / 2,
@@ -714,7 +742,6 @@ export class MinimarketScene extends Phaser.Scene {
     if (this.storeState !== "closed") return;
     this.storeState = "open";
     this.spawned = 0;
-    this.say("Shop is open! Use WASD to move, then stand at the CASHIER SPOT.");
     this.time.delayedCall(1000, () => this.scheduleWave());
   }
 
@@ -1231,19 +1258,60 @@ export class MinimarketScene extends Phaser.Scene {
     });
   }
 
-  /** Karpet kasir menyala hijau lembut saat pemain siap melayani. */
+  /** Karpet kasir: berkedip + tulisan saat ada antrian tapi pemain belum di karpet. */
   private updateCashierMat() {
     if (!this.cashierMat) return;
-    const active = this.isPlayerAtCashier();
-    this.cashierMat.setFillStyle(active ? 0x7BF0AA : 0xffffff, active ? 0.18 : 0);
+    const onMat = this.isPlayerAtCashier();
+    const waiting = this.queue.length > 0;
+
+    // 1) Pemain sudah di karpet: lampu menyala tetap, tulisan hilang.
+    if (onMat) {
+      this.stopMatBlink();
+      this.cashierMat.setFillStyle(0x7BF0AA, 0.18);
+      this.cashierHint?.setVisible(false);
+      return;
+    }
+
+    // 2) Ada pelanggan menunggu tapi pemain masih jauh: berkedip + petunjuk.
+    if (waiting) {
+      this.cashierHint?.setVisible(true);
+      if (!this.matBlink) this.startMatBlink();
+      return;
+    }
+
+    // 3) Tidak ada antrian: panel padam.
+    this.stopMatBlink();
+    this.cashierMat.setFillStyle(0xffffff, 0);
+    this.cashierHint?.setVisible(false);
+  }
+
+  private startMatBlink() {
+    if (!this.cashierMat) return;
+    this.cashierMat.setFillStyle(0x7BF0AA, 0.08);
+    this.matBlink = this.tweens.add({
+      targets: this.cashierMat,
+      fillAlpha: { from: 0.08, to: 0.32 },
+      duration: 450,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private stopMatBlink() {
+    if (this.matBlink) {
+      this.matBlink.remove();
+      this.matBlink = null;
+    }
+    this.cashierMat?.setFillStyle(0x7BF0AA, 0.18);
   }
 
   private isPlayerAtCashier() {
     return (
-      this.player.x >= CASHIER_ZONE.x &&
-      this.player.x <= CASHIER_ZONE.x + CASHIER_ZONE.w &&
-      this.player.y >= CASHIER_ZONE.y &&
-      this.player.y <= CASHIER_ZONE.y + CASHIER_ZONE.h
+      this.player.x >= CASHIER_MAT.x &&
+      this.player.x <= CASHIER_MAT.x + CASHIER_MAT.w &&
+      this.player.y >= CASHIER_MAT.y &&
+      this.player.y <= CASHIER_MAT.y + CASHIER_MAT.h
     );
   }
 

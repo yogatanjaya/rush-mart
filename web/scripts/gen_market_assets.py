@@ -397,10 +397,11 @@ def draw_counter(d):
 
 
 def draw_kasir_sign(d):
-    """Papan kayu 'KASIR' ditempel di muka depan meja, di tengah."""
-    label = "KASIR"
-    tw = text_w(label, 2)
-    w = tw + 12
+    """Papan kayu 'CASHIER' ditempel di muka depan meja, di tengah."""
+    label = "CASHIER"
+    scale = 1.7          # ~15% lebih kecil dari skala 2 sebelumnya
+    tw = text_w(label, scale)
+    w = int(tw + 12)
     h = 18
     x = 490 - w // 2
     y = 123
@@ -415,7 +416,7 @@ def draw_kasir_sign(d):
     # paku di dua sudut
     d.point((x + 3, y + 3), fill="#2A1608")
     d.point((x + w - 4, y + 3), fill="#2A1608")
-    draw_text(d, x + 6, y + 3, label, "#241408", 2)
+    draw_text(d, x + 6, y + 3, label, "#241408", scale)
 
 
 def dashed_rect(d, x, y, w, h, color, dash=3, gap=2):

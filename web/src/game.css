@@ -621,6 +621,11 @@
     inset 0 -4px 0 #3d2210;
 }
 
+/* Judul popup kasir: ukurannya 15% lebih kecil dari judul popup lain. */
+.seedshop.kasir .seedshop-title {
+  font-size: 11px;
+}
+
 .seedshop-title {
   display: flex;
   align-items: center;
@@ -1237,7 +1242,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: rgba(0, 0, 0, 0.46);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 /* Ringkasan cara bermain, di bawah papan (di luar popup). */
@@ -1429,6 +1434,12 @@
 .result-frame {
   gap: 12px;
   min-width: 360px;
+}
+
+/* Popup hasil dikecilkan 20% supaya tidak menutupi panel HOW TO PLAY. */
+.start-frame.result-frame {
+  /* dinaikkan supaya tidak menimpa panel HOW TO PLAY di bawahnya */
+  transform: translateY(-24px) scale(0.8);
 }
 
 .result-head {

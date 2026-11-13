@@ -243,9 +243,9 @@ export class FarmScene extends Phaser.Scene {
     // Papan nama gudang: teks duduk di papan kayu yang tergambar di atas pintu
     // (aset: draw_barn_sign di scripts/gen_pixel_assets.py, x+30 y+28, 44x12).
     this.add
-      .text(1136, 148, "Gudang", {
+      .text(1136, 148, "Warehouse", {
         fontFamily: "Verdana, system-ui, sans-serif",
-        fontSize: "11px",
+        fontSize: "10px",
         color: "#4A2410",
         fontStyle: "bold",
       })

@@ -81,6 +81,7 @@ export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [world, setWorld] = useState<WorldSnapshot>(EMPTY);
   const [showSeeds, setShowSeeds] = useState(false);
+
   const [musicOn, setMusicOn] = useState(true);
 
   // Suara tombol PLAY / PLAY AGAIN / TRY AGAIN
@@ -171,6 +172,8 @@ export default function Game() {
   const viewRef = useRef<"farm" | "minimarket">("minimarket");
   // Hasil ronde: null = belum selesai, "success" = target tercapai, "fail" = waktu habis.
   const [result, setResult] = useState<"success" | "fail" | null>(null);
+
+
   const [qty, setQty] = useState<Record<CropId, number>>({
     jagung: 15,
     tomat: 15,
@@ -603,7 +606,7 @@ export default function Game() {
             <div className="seedshop-head">
               <div className="seedshop-title">
                 <CoinIcon />
-                <span>KASIR</span>
+                <span>CASHIER</span>
               </div>
             </div>
 
@@ -657,7 +660,7 @@ export default function Game() {
 
             <div className="seedshop-foot">
               <div className="seedshop-total">
-                Salah hitung? Pelanggan pergi & barangnya hangus.
+                Wrong change? Customer left with the items. Profit lost!
               </div>
               <button
                 type="button"
