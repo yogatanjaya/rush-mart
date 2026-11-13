@@ -62,6 +62,9 @@ const SLOT_H = (PLOT_H - INSET * 2) / SLOT_ROWS; // 80
 /** Skala gambar tanaman: sedikit lebih kecil dari slot supaya tidak tumpang tindih. */
 const CROP_SCALE = SCALE * 0.85;
 /** Jeda antar petak saat menekan "TANAM SEMUA" (ms). */
+const PLANT_ALL_SFX_OFFSETS = [0, 300, 600, 900];
+const PLANT_ALL_SFX_VOLUME = 0.06;
+
 const PLANT_STEP_MS = 110;
 /** Jeda antar petak saat menekan "PANEN" (ms). */
 const HARVEST_STEP_MS = 110;
@@ -89,6 +92,8 @@ export class FarmScene extends Phaser.Scene {
   /** Suara tanam 1 bibit (HTMLAudio: bebas kunci audio Phaser). */
   private plantSfx?: HTMLAudioElement;
   private plantSfxAt = 0;
+  /** Suara TANAM SEMUA yang sedang berbunyi (polifoni, maks 3). */
+  private plantAllVoices: HTMLAudioElement[] = [];
 
   private stallSign?: Phaser.GameObjects.Text;
   private stallFlash?: Phaser.GameObjects.Rectangle;
@@ -481,10 +486,39 @@ export class FarmScene extends Phaser.Scene {
       if (this.plant(slot)) this.playPlantSfx();
     } else if (slot.stage === 3) {
       this.harvest(slot);
+      this.playPlantSfx();
     } else {
       const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
       this.say(`Masih tumbuh — sekitar ${left} detik lagi.`);
     }
+  }
+
+  /**
+   * TANAM SEMUA: bunyi tanam diputar 4x berjeda, mengikuti ritme 15 petak
+   * (tiap petak 110 ms). Tiap bunyi memakai pemutar sendiri, jadi tidak
+   * saling memotong kalau tombol ditekan di lahan lain.
+   */
+  private playPlantAllSfx() {
+    if (!this.plantSfx) return;
+    for (const ms of PLANT_ALL_SFX_OFFSETS) {
+      this.time.delayedCall(ms, () => this.spawnPlantVoice(PLANT_ALL_SFX_VOLUME));
+    }
+  }
+
+  /** Satu "suara" tanam; maksimal 3 berbunyi bersamaan. */
+  private spawnPlantVoice(volume: number) {
+    const base = this.plantSfx;
+    if (!base) return;
+    this.plantAllVoices = this.plantAllVoices.filter((v) => !v.ended && !v.paused);
+    if (this.plantAllVoices.length >= 3) return;
+
+    const voice = base.cloneNode(true) as HTMLAudioElement;
+    voice.volume = volume;
+    voice.addEventListener("ended", () => {
+      this.plantAllVoices = this.plantAllVoices.filter((v) => v !== voice);
+    });
+    this.plantAllVoices.push(voice);
+    void voice.play().catch(() => {});
   }
 
   private playPlantSfx() {
@@ -578,6 +612,8 @@ export class FarmScene extends Phaser.Scene {
       return;
     }
 
+    this.playPlantAllSfx();
+
     // Tanam berurutan: petak 1, tunggu PLANT_STEP_MS, petak 2, dan seterusnya.
     let n = 0;
     for (const slot of empty) {
@@ -632,6 +668,7 @@ export class FarmScene extends Phaser.Scene {
       this.say(`Belum ada ${CROPS[crop].name} yang siap panen.`);
       return;
     }
+    this.playPlantAllSfx();
 
     let n = 0;
     for (const slot of ready) {
