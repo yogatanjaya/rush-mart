@@ -86,6 +86,10 @@ interface Slot {
 export class FarmScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
 
+  /** Suara tanam 1 bibit (HTMLAudio: bebas kunci audio Phaser). */
+  private plantSfx?: HTMLAudioElement;
+  private plantSfxAt = 0;
+
   private stallSign?: Phaser.GameObjects.Text;
   private stallFlash?: Phaser.GameObjects.Rectangle;
   private nearStall = false;
@@ -170,6 +174,11 @@ export class FarmScene extends Phaser.Scene {
     this.drawLabels();
     this.createPlots();
     this.createPlantAllButtons();
+
+    const plantSnd = new Audio("assets/sfx/plant.wav");
+    plantSnd.volume = 0.08;
+    plantSnd.preload = "auto";
+    this.plantSfx = plantSnd;
     this.createStallInteraction();
     this.createPlayer();
     this.createAnimations();
@@ -469,7 +478,7 @@ export class FarmScene extends Phaser.Scene {
 
   private clickSlot(slot: Slot) {
     if (slot.stage === 0) {
-      this.plant(slot);
+      if (this.plant(slot)) this.playPlantSfx();
     } else if (slot.stage === 3) {
       this.harvest(slot);
     } else {
@@ -478,10 +487,20 @@ export class FarmScene extends Phaser.Scene {
     }
   }
 
-  private plant(slot: Slot) {
+  private playPlantSfx() {
+    const a = this.plantSfx;
+    if (!a) return;
+    const now = performance.now();
+    if (now - this.plantSfxAt < 80) return;
+    this.plantSfxAt = now;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  }
+
+  private plant(slot: Slot): boolean {
     if (this.seeds[slot.crop] <= 0) {
       this.say(`Bibit ${CROPS[slot.crop].name} habis. Beli dulu lewat BUY SEED.`);
-      return;
+      return false;
     }
     this.seeds[slot.crop] -= 1;
     slot.stage = 1;
@@ -496,6 +515,7 @@ export class FarmScene extends Phaser.Scene {
     slot.sprite.setScale(CROP_SCALE * 0.6);
     this.tweens.add({ targets: slot.sprite, scale: CROP_SCALE, duration: 220, ease: "Back.easeOut" });
     this.say(`${CROPS[slot.crop].name} ditanam.`);
+    return true;
   }
 
   private harvest(slot: Slot) {

@@ -57,6 +57,12 @@ export default function Game() {
   const [showSeeds, setShowSeeds] = useState(false);
   const [musicOn, setMusicOn] = useState(true);
   const musicRef = useRef<HTMLAudioElement | null>(null);
+  /** SFX saat berpindah tempat (tombol KE FARM / KE MINIMARKET). */
+  const navSfxRef = useRef<HTMLAudioElement | null>(null);
+  /** Waktu terakhir SFX pindah tempat diputar (untuk jeda minimum). */
+  const navLastRef = useRef(0);
+  /** SFX tombol BELI SEMUA di popup Toko Bibit. */
+  const buySfxRef = useRef<HTMLAudioElement | null>(null);
   const mutedRef = useRef(false);
 
 
@@ -93,7 +99,21 @@ export default function Game() {
   }, []);
 
   // Tenda di peta boleh meminta popup Toko Bibit dibuka (lihat game/ui.ts).
-  useEffect(() => onOpenSeedShop(() => setShowSeeds(true)), []);
+  // Suara saat tenda BUY SEED ditekan (file: assets/sfx/shop.wav).
+  const shopSfxRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    const snd = new Audio("assets/sfx/shop.wav");
+    snd.volume = 0.15;
+    snd.preload = "auto";
+    shopSfxRef.current = snd;
+    return onOpenSeedShop(() => {
+      setShowSeeds(true);
+      const a = shopSfxRef.current;
+      if (!a) return;
+      a.currentTime = 0;
+      void a.play().catch(() => {});
+    });
+  }, []);
   // Default 15 per tanaman = satu lahan penuh (15 slot). Total 4 x 15 = 180 koin,
   // masih terjangkau dengan modal awal 200 koin.
   // Pemain beku sampai tombol PLAY ditekan (lihat src/game/flow.ts).
@@ -236,6 +256,16 @@ export default function Game() {
     audio.preload = "auto";
     musicRef.current = audio;
 
+    const buy = new Audio("assets/sfx/buy.wav");
+    buy.volume = 0.12;
+    buy.preload = "auto";
+    buySfxRef.current = buy;
+
+    const nav = new Audio("assets/sfx/nav.wav");
+    nav.volume = 0.085;
+    nav.preload = "auto";
+    navSfxRef.current = nav;
+
     const startMusic = (ev?: Event) => {
       // kalau interaksi pertama justru menekan tombol musik, biar tombol itu yang mengatur
       const el = ev?.target as HTMLElement | undefined;
@@ -253,6 +283,26 @@ export default function Game() {
       audio.pause();
       musicRef.current = null;
     };
+  }, []);
+
+  /** SFX pindah tempat: satu pemutar saja + jeda minimum 250 ms.
+   *  Tanpa penggandaan, amplitudo tidak pernah menumpuk walau di-spam. */
+  const playNav = useCallback(() => {
+    const base = navSfxRef.current;
+    if (!base) return;
+    const now = performance.now();
+    if (now - navLastRef.current < 250) return;
+    navLastRef.current = now;
+    base.currentTime = 0;
+    void base.play().catch(() => {});
+  }, []);
+
+  /** Bunyi kasir saat pembelian bibit berhasil. */
+  const playBuy = useCallback(() => {
+    const a = buySfxRef.current;
+    if (!a) return;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
   }, []);
 
   const toggleMusic = useCallback(() => {
@@ -358,11 +408,11 @@ export default function Game() {
         {/* Pindah halaman + TUTUP TOKO. Tombol mulai jualan ada di layar PLAY. */}
         <div className="hud-center">
           {world.activeScene === "farm" ? (
-            <button className="hud-btn" onClick={() => switchScene("MinimarketScene")}>
+            <button className="hud-btn" onClick={() => { playNav(); switchScene("MinimarketScene"); }}>
               KE MINIMARKET
             </button>
           ) : (
-            <button className="hud-btn" onClick={() => switchScene("FarmScene")}>
+            <button className="hud-btn" onClick={() => { playNav(); switchScene("FarmScene"); }}>
               KE FARM
             </button>
           )}
@@ -505,7 +555,7 @@ export default function Game() {
                       if (farm()?.buySeed(crop, qty[crop])) bought += CROPS[crop].seed * qty[crop];
                     }
                   }
-                  if (bought > 0) setToast(`Belanja bibit ${bought} koin`);
+                  if (bought > 0) { setToast(`Belanja bibit ${bought} koin`); playBuy(); }
                   setShowSeeds(false);
                 }}
               >

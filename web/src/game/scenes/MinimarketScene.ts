@@ -216,6 +216,8 @@ export class MinimarketScene extends Phaser.Scene {
   private failSfx?: HTMLAudioElement;
   private enterSfx?: HTMLAudioElement;
   private refillSfx?: HTMLAudioElement;
+  /** Waktu terakhir tiap SFX diputar (kunci: src), untuk jeda minimum. */
+  private sfxLastAt: Record<string, number> = {};
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
   /** True kalau halaman minimarket yang sedang ditampilkan. */
   private front = true;
@@ -308,7 +310,7 @@ export class MinimarketScene extends Phaser.Scene {
       this.enterSfx.volume = 0.04;
 
       this.refillSfx = new Audio("assets/sfx/refill.wav");
-      this.refillSfx.volume = 0.12;
+      this.refillSfx.volume = 0.075;
     }
 
     this.physics.world.setBounds(ROOM.x + 20, ROOM.y + 30, ROOM.w - 40, ROOM.h - 60);
@@ -1169,12 +1171,17 @@ export class MinimarketScene extends Phaser.Scene {
    * Dipanggil tepat setelah pemain menekan OKE pada transaksi yang benar.
    */
   /** Putar satu efek suara (HTMLAudio — tidak kena kunci audio Phaser). */
-  private playSfx(audio?: HTMLAudioElement) {
+  /** Putar satu efek suara dengan SATU pemutar saja + jeda minimum.
+   *  Tanpa penggandaan, beberapa picu beruntun tidak menumpuk amplitudo
+   *  (dulu terasa jauh lebih keras saat di-spam). */
+  private playSfx(audio?: HTMLAudioElement, minGapMs = 200) {
     if (!audio) return;
-    // kalau suara sebelumnya belum selesai, pakai salinan supaya tidak terpotong
-    const node = audio.paused ? audio : (audio.cloneNode() as HTMLAudioElement);
-    node.currentTime = 0;
-    void node.play().catch(() => {});
+    const key = audio.src;
+    const now = performance.now();
+    if ((this.sfxLastAt[key] ?? 0) + minGapMs > now) return;
+    this.sfxLastAt[key] = now;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
   }
 
   private floatProfit(delta: number) {
