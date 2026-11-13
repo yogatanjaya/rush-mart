@@ -153,8 +153,35 @@
   pointer-events: auto;
 }
 
-/* Tombol musik: satu warna rata (tanpa bevel), ON = hijau sage, OFF = merah bata */
+/* Tombol FARM berkedip saat ada rak yang menampilkan FILL YOUR DISPLAY.
+   Intensitas: redup 35%, lalu 40% lagi, lalu dinaikkan 50% dari selisihnya. */
+.hud-btn.is-alert {
+  background: #c08b45;
+  color: #2a1706;
+  border-color: #613c0f;
+  border-top-color: #d9b184;
+  border-left-color: #d9b184;
+  text-shadow: 1px 1px 0 #d8c39a;
+  box-shadow: 0 4px 0 #553108, 0 0 0 2px rgba(217, 177, 132, 0.54), 0 0 11px 4px rgba(192, 139, 69, 0.42);
+  animation: hud-alert 1s ease-in-out infinite;
+}
+
+@keyframes hud-alert {
+  0%, 100% {
+    background: #c08b45;
+    box-shadow: 0 4px 0 #553108, 0 0 0 2px rgba(217, 177, 132, 0.54), 0 0 11px 4px rgba(192, 139, 69, 0.42);
+    filter: brightness(1);
+  }
+  50% {
+    background: #c9a06a;
+    box-shadow: 0 4px 0 #553108, 0 0 0 3px rgba(224, 190, 150, 0.64), 0 0 15px 5px rgba(200, 156, 96, 0.5);
+    filter: brightness(1.03);
+  }
+}
+
 .hud-btn.hud-music {
+  height: 52px;
+  gap: 4px;
   background: #7da88b;
   border: 3px solid #2a1608;
   border-top-color: #2a1608;
@@ -175,11 +202,6 @@
   display: inline-flex;
   align-items: center;
   transform: translateY(-6px);
-}
-
-.hud-btn.hud-music {
-  height: 52px;
-  gap: 4px;
 }
 
 .hud-btn.hud-music:hover:not(:disabled) {
@@ -533,6 +555,34 @@
 }
 
 /* Papan kayu dipisah dari teks supaya opacity-nya bisa beda. */
+/* Notice bar di atas tenda BUY SEED (halaman kebun). */
+.game-toast.tent-hint {
+  left: 13.3%;
+  top: 39.7%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  max-width: 170px;
+  min-width: 120px;
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 2px 7px 3px;
+}
+
+.game-toast.tent-hint::before {
+  animation: tent-border-blink 0.7s ease-in-out infinite;
+}
+
+@keyframes tent-border-blink {
+  0%, 100% {
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.6);
+  }
+}
+
 .game-toast::before {
   content: "";
   position: absolute;

@@ -81,6 +81,8 @@ export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [world, setWorld] = useState<WorldSnapshot>(EMPTY);
   const [showSeeds, setShowSeeds] = useState(false);
+  /** Notice bar di atas tenda BUY SEED — muncul 3 detik setiap masuk kebun. */
+  const [tentHint, setTentHint] = useState(false);
 
   const [musicOn, setMusicOn] = useState(true);
 
@@ -185,6 +187,8 @@ export default function Game() {
   const [payChange, setPayChange] = useState("");
   const changeRef = useRef<HTMLInputElement>(null);
   const payId = world.store.payment?.id ?? 0;
+  /** Ada rak yang menampilkan "FILL YOUR DISPLAY" (stok ≤ 8) → tombol FARM berkedip. */
+  const needsRefill = world.shelves.some((s) => s.count <= 8);
 
 
 
@@ -273,6 +277,12 @@ export default function Game() {
    * Pindah halaman. Kedua scene tetap hidup — hanya tampilan & input yang
    * dipindah, jadi ronde jualan (dan pertumbuhan tanaman) tidak berhenti.
    */
+  /** Tampilkan notice tenda selama 3 detik. */
+  const showTentHint = useCallback(() => {
+    setTentHint(true);
+    window.setTimeout(() => setTentHint(false), 3000);
+  }, []);
+
   const switchScene = useCallback((key: "FarmScene" | "MinimarketScene") => {
     const game = gameRef.current;
     if (!game) return;
@@ -454,7 +464,10 @@ export default function Game() {
               MINIMART
             </button>
           ) : (
-            <button className="hud-btn" onClick={() => { playNav(); switchScene("FarmScene"); }}>
+            <button
+              className={`hud-btn ${needsRefill ? "is-alert" : ""}`}
+              onClick={() => { playNav(); switchScene("FarmScene"); showTentHint(); }}
+            >
               FARM
             </button>
           )}
@@ -672,6 +685,12 @@ export default function Game() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {tentHint && (
+        <div className="game-toast tent-hint">
+          BUY SEED HERE - CLICK TENT
         </div>
       )}
 
