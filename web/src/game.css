@@ -1754,3 +1754,63 @@
   /* VT323 tidak punya bold tebal; stroke tipis membuat huruf jelas lebih tebal */
   -webkit-text-stroke: 0.45px currentColor;
 }
+
+/* Cloud tip di atas kepala pemain (muncul saat ronde dimulai di minimarket) */
+.mart-tip {
+  position: absolute;
+  left: 700px;
+  top: 48px;
+  width: 300px;
+  padding: 12px 16px 11px 14px;
+  background: #ffffff;
+  border-radius: 40px;
+  box-shadow: 0 8px 0 rgba(42, 22, 8, 0.16);
+  z-index: 4;
+  pointer-events: none;
+}
+/* gumpalan awan (cloud) */
+.mart-tip::before,
+.mart-tip::after {
+  content: "";
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+  z-index: -1;
+}
+.mart-tip::before {
+  width: 62px;
+  height: 62px;
+  left: 24px;
+  top: -22px;
+  box-shadow: 0 -6px 0 rgba(42, 22, 8, 0.05);
+}
+.mart-tip::after {
+  width: 46px;
+  height: 46px;
+  left: 96px;
+  top: -28px;
+}
+.mart-tip ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+.mart-tip li {
+  font-family: "VT323", monospace;
+  font-size: 15px;
+  line-height: 1.3;
+  color: #1f2530;
+  margin: 1px 0;
+}
+/* ekor awan menunjuk ke kepala pemain (kanan bawah) */
+.mart-tip-tail {
+  position: absolute;
+  right: 26px;
+  bottom: -18px;
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 0 solid transparent;
+  border-top: 22px solid #ffffff;
+  transform: rotate(-18deg);
+}

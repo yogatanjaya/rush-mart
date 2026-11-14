@@ -92,6 +92,7 @@ export default function Game() {
   });
   const [walletPanel, setWalletPanel] = useState(false);
   const [chainHint, setChainHint] = useState<null | "off" | "on">(null);
+  const [martTip, setMartTip] = useState(false);
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
@@ -476,6 +477,24 @@ export default function Game() {
     return () => window.clearInterval(id);
   }, [playing, result]);
 
+  // DEV: ?autoplay=1 menekan PLAY otomatis (dipakai untuk screenshot/demo).
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has("autoplay")) {
+      setTimeout(() => (document.querySelector(".start-play") as HTMLButtonElement)?.click(), 500);
+    }
+  }, []);
+
+  // Cloud tip di atas kepala pemain: muncul saat ronde dimulai, hilang setelah 10 detik.
+  useEffect(() => {
+    if (!playing || result !== null) {
+      setMartTip(false);
+      return;
+    }
+    setMartTip(true);
+    const id = window.setTimeout(() => setMartTip(false), 10000);
+    return () => window.clearTimeout(id);
+  }, [playing, result]);
+
   /** Ronde berakhir: kunci permainan dan tampilkan popup hasil. */
   const endRound = useCallback((kind: "success" | "fail") => {
     if (timeUpRef.current) return;
@@ -783,6 +802,16 @@ export default function Game() {
       )}
 
       {toast && <div className="game-toast">{toast}</div>}
+      {martTip && (
+        <div className="mart-tip" role="note">
+          <ul>
+            <li>Serve customers at the cashier</li>
+            <li>Plant &amp; harvest seeds on the farm</li>
+            <li>Stock the minimart shelves</li>
+          </ul>
+          <span className="mart-tip-tail" />
+        </div>
+      )}
       {chainHint === "off" && (
         <div className="game-toast chain-hint">
           <b>Refresh</b> page, and <b>Connect</b> wallet to get on-chain record
