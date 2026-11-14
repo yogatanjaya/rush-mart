@@ -40,7 +40,7 @@ function emit() {
 
 export function subscribe(fn: Listener) {
   listeners.add(fn);
-  fn({ status, accountId, pending: queue.length } as any);
+  fn({ status, accountId, pending: queue.length, sent, failed } as any);
   return () => listeners.delete(fn);
 }
 
@@ -135,7 +135,7 @@ export async function ensureSessionKey(): Promise<boolean> {
   }
 }
 
-export function disconnect() {
+export function disconnectWallet() {
   localStorage.removeItem(KEY_STORAGE);
   accountId = "";
   setStatus("off");

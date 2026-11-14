@@ -7,7 +7,7 @@
 //   Phaser → React : scene.snapshot() dibaca tiap 150 ms (polling ringan)
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { connectWallet, ensureSessionKey, subscribe as subscribeWallet, recordRound } from "./near/wallet";
+import { connectWallet, ensureSessionKey, disconnectWallet, subscribe as subscribeWallet, recordRound } from "./near/wallet";
 import Phaser from "phaser";
 import { FarmScene } from "./game/scenes/FarmScene";
 import { onOpenSeedShop } from "./game/ui";
@@ -84,20 +84,18 @@ export default function Game() {
   const [showSeeds, setShowSeeds] = useState(false);
 
   // Status wallet on-chain (connect + kunci sesi). Game tetap jalan tanpa wallet.
-  const [wallet, setWallet] = useState<{ status: string; accountId: string; pending: number }>({
+  const [wallet, setWallet] = useState<{ status: string; accountId: string; pending: number; sent: number }>({
     status: "off",
     accountId: "",
     pending: 0,
+    sent: 0,
   });
+  const [walletPanel, setWalletPanel] = useState(false);
+
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
-  const onWalletClick = useCallback(async () => {
-    if (!wallet.accountId) {
-      await connectWallet();
-      return;
-    }
-    if (wallet.status !== "on") await ensureSessionKey();
-  }, [wallet.accountId, wallet.status]);
+  // Chip hanya membuka panel; aksi (connect / enable / disconnect) ada di panel.
+  const onWalletClick = useCallback(() => setWalletPanel((v) => !v), []);
   /** Notice bar di atas tenda BUY SEED — muncul 3 detik setiap masuk kebun. */
   const [tentHint, setTentHint] = useState(false);
 
@@ -471,7 +469,7 @@ export default function Game() {
             onClick={onWalletClick}
             title={wallet.accountId || "connect wallet to record on-chain"}
           >
-            {wallet.status === "on" ? "⛓ REC" : "⛓ OFF"}
+            {wallet.status === "on" ? `⛓ ${wallet.sent}` : "⛓ OFF"}
           </button>
           <button
             className={`hud-btn hud-music${musicOn ? "" : " is-off"}`}
@@ -771,6 +769,48 @@ export default function Game() {
             </div>
           </div>
           <HowToPlay />
+          {walletPanel && (
+            <div className="wallet-panel" role="dialog" aria-label="On-chain recording">
+              <div className="wallet-panel-head">
+                <span>ON-CHAIN RECORDING</span>
+                <button type="button" className="wallet-panel-close" onClick={() => setWalletPanel(false)}>
+                  ×
+                </button>
+              </div>
+
+              {!wallet.accountId && (
+                <>
+                  <p className="wallet-panel-note">Optional — the game plays fine without a wallet.</p>
+                  <button type="button" className="wallet-panel-btn" onClick={() => connectWallet()}>
+                    CONNECT WALLET
+                  </button>
+                </>
+              )}
+
+              {wallet.accountId && wallet.status !== "on" && (
+                <>
+                  <p className="wallet-panel-acct">{wallet.accountId}</p>
+                  <p className="wallet-panel-note">
+                    Step 2 of 2 — allow the game to record your actions (1 approval, then no more popups).
+                  </p>
+                  <button type="button" className="wallet-panel-btn" onClick={() => ensureSessionKey()}>
+                    ENABLE RECORDING
+                  </button>
+                </>
+              )}
+
+              {wallet.status === "on" && (
+                <>
+                  <p className="wallet-panel-acct">{wallet.accountId}</p>
+                  <p className="wallet-panel-live">● RECORDING ON-CHAIN</p>
+                  <p className="wallet-panel-note">{wallet.sent} actions saved to the contract</p>
+                  <button type="button" className="wallet-panel-btn is-ghost" onClick={() => disconnectWallet()}>
+                    DISCONNECT
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
         </div>

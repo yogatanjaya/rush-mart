@@ -1647,3 +1647,70 @@
     font-size: 16px;
   }
 }
+
+/* Panel on-chain (Opsi A): muncul saat chip wallet diklik */
+.wallet-panel {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  padding: 12px 14px 14px;
+  background: #f2e2c2;
+  border: 3px solid #2a1608;
+  box-shadow: 0 6px 0 #2a1608, 0 0 0 3px rgba(42, 22, 8, 0.25);
+  z-index: 5;
+}
+.wallet-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #4a2410;
+  margin-bottom: 8px;
+}
+.wallet-panel-close {
+  background: none;
+  border: 0;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: #8c2f18;
+  cursor: pointer;
+  line-height: 1;
+}
+.wallet-panel-acct {
+  font-family: "VT323", monospace;
+  font-size: 15px;
+  color: #2a1608;
+  margin: 2px 0 6px;
+  word-break: break-all;
+}
+.wallet-panel-live {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #2f6b46;
+  margin: 0 0 6px;
+}
+.wallet-panel-note {
+  font-family: "VT323", monospace;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #5c3a1c;
+  margin: 0 0 10px;
+}
+.wallet-panel-btn {
+  width: 100%;
+  padding: 9px 10px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #10231a;
+  background: #7da88b;
+  border: 2px solid #2a1608;
+  box-shadow: 0 3px 0 #2a1608;
+  cursor: pointer;
+}
+.wallet-panel-btn.is-ghost {
+  background: #ddc7a1;
+  color: #6b2d16;
+}
