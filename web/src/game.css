@@ -1796,3 +1796,36 @@
   text-align: center;
   z-index: 5;
 }
+
+/* Jeda 5 px antara bibit dan alat-alat */
+.inv-gap {
+  width: 5px;
+  flex: 0 0 5px;
+}
+
+/* Kotak alat: bisa diklik */
+.inv-tool {
+  padding: 0;
+  border: 2px solid #6b4a2a;
+  background: #e8d3ac;
+  cursor: pointer;
+  /* bar inventory mematikan pointer-events; tombol alat harus mengaktifkannya sendiri */
+  pointer-events: auto;
+  transition: transform 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
+}
+
+.inv-tool img {
+  width: 82%;
+  height: 82%;
+  image-rendering: pixelated;
+}
+
+.inv-tool:hover {
+  transform: translateY(-2px);
+}
+
+.inv-tool.selected {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.55), 0 3px 0 rgba(0, 0, 0, 0.35);
+  background: #f7e6bd;
+}

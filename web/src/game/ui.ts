@@ -52,3 +52,32 @@ export function onPayNudge(fn: Listener): () => void {
 export function payNudge() {
   for (const fn of payNudgeListeners) fn();
 }
+
+export type Tool = "hand" | "water" | "hoe";
+
+let activeTool: Tool = "hand";
+let toolListeners: ((tool: Tool) => void)[] = [];
+
+/** React mendengarkan perubahan alat (mis. saat scene mereset ke tangan kosong). */
+export function onToolChanged(fn: (tool: Tool) => void): () => void {
+  toolListeners.push(fn);
+  return () => {
+    toolListeners = toolListeners.filter((l) => l !== fn);
+  };
+}
+
+/** React memilih alat di inventory bar. */
+export function setTool(tool: Tool) {
+  activeTool = tool;
+  for (const fn of toolListeners) fn(tool);
+}
+
+/** Kembalikan ke tangan kosong (dipakai setiap masuk kebun). */
+export function resetTool() {
+  setTool("hand");
+}
+
+/** Scene membaca alat yang sedang dipegang pemain. */
+export function getTool(): Tool {
+  return activeTool;
+}

@@ -24,6 +24,7 @@ import {
 } from "../types";
 import { economy } from "../economy";
 import { isPlaying } from "../flow";
+import { getTool, resetTool } from "../ui";
 import { openSeedShop, goToScene } from "../ui";
 import { recordPurchase, recordPlant, recordHarvest } from "../../near/wallet";
 
@@ -91,8 +92,19 @@ interface Slot {
   stage: Stage;
   plantedAt: number;
   sprite: Phaser.GameObjects.Image | null;
+  /** posisi tengah petak di kanvas. */
+  x: number;
+  y: number;
   zone: Phaser.GameObjects.Zone;
   ring: Phaser.GameObjects.Rectangle;
+  /** Sudah disiram? Tanaman tidak tumbuh sebelum disiram. */
+  watered: boolean;
+  /** Tanah basah (tampil setelah disiram). */
+  wet: Phaser.GameObjects.Rectangle;
+  /** Tulisan "SIAP - TANAM" di dalam petak (muncul kalau disiram sebelum ditanam). */
+  readyLabel: Phaser.GameObjects.Text;
+  /** Tulisan "Need Water": sudah ditanam tapi belum disiram. */
+  needWaterLabel: Phaser.GameObjects.Text;
 }
 
 export class FarmScene extends Phaser.Scene {
@@ -101,6 +113,9 @@ export class FarmScene extends Phaser.Scene {
   /** Suara tanam 1 bibit (HTMLAudio: bebas kunci audio Phaser). */
   private plantSfx?: HTMLAudioElement;
   private plantSfxAt = 0;
+  /** Suara menyiram (HTMLAudio). */
+  private waterSfx?: HTMLAudioElement;
+  private waterSfxAt = 0;
   /** Suara TANAM SEMUA yang sedang berbunyi (polifoni, maks 3). */
   private plantAllVoices: HTMLAudioElement[] = [];
 
@@ -153,6 +168,8 @@ export class FarmScene extends Phaser.Scene {
 
   notice: string | null = null;
   private noticeUntil = 0;
+  /** nomor urut pesan; naik tiap say() supaya pesan sama tetap tampil. */
+  private noticeSeq = 0;
 
   constructor() {
     super("FarmScene");
@@ -193,6 +210,12 @@ export class FarmScene extends Phaser.Scene {
     plantSnd.volume = 0.08;
     plantSnd.preload = "auto";
     this.plantSfx = plantSnd;
+
+    // suara menyiram
+    const waterSnd = new Audio("assets/sfx/water.wav");
+    waterSnd.preload = "auto";
+    waterSnd.volume = 0.09;
+    this.waterSfx = waterSnd;
     this.createStallInteraction();
     this.createPlayer();
     this.createMartDoorHint();
@@ -290,11 +313,17 @@ export class FarmScene extends Phaser.Scene {
             crop: p.crop,
             plotIndex,
             slotIndex,
+            x,
+            y,
             stage: 0,
             plantedAt: 0,
             sprite: null,
             zone,
             ring,
+            watered: false,
+            wet: undefined as unknown as Phaser.GameObjects.Rectangle,
+            readyLabel: undefined as unknown as Phaser.GameObjects.Text,
+            needWaterLabel: undefined as unknown as Phaser.GameObjects.Text,
           };
 
           zone.on("pointerover", () => {
@@ -308,6 +337,69 @@ export class FarmScene extends Phaser.Scene {
           zone.on("pointerdown", () => {
             if (isPlaying() && this.front) this.clickSlot(slot);
           });
+
+          // tanah basah: memenuhi seluruh kotak petak (disembunyikan sampai disiram)
+          const wet = this.add
+            .rectangle(slot.x, slot.y, SLOT_W + 1, SLOT_H + 1, 0x1d1108, 0.55)
+            .setDepth(1.05)
+            .setVisible(false);
+
+          // tulisan "SIAP - TANAM" di dalam petak
+          const readyLabel = this.add
+            .text(slot.x, slot.y + 1, "READY\nPLANT", {
+              // font tulisan biasa (sama seperti papan nama di kebun)
+              fontFamily: "Verdana, system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#fff8e2",
+              align: "center",
+              lineSpacing: -1,
+              stroke: "#2a1608",
+              strokeThickness: 2,
+            })
+            .setOrigin(0.5)
+            .setAlpha(0.26)
+            .setDepth(2.2)
+            .setVisible(false);
+
+          // kedip santai (naik-turun pelan) selama label tampil
+          this.tweens.add({
+            targets: readyLabel,
+            alpha: { from: 0.15, to: 0.38 },
+            duration: 900,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+
+          // tulisan "Need Water": ditanam tapi belum disiram
+          const needWaterLabel = this.add
+            .text(slot.x, slot.y - 13, "Need\nWater", {
+              fontFamily: "Verdana, system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#fff8e2",
+              align: "center",
+              lineSpacing: -1,
+              stroke: "#2a1608",
+              strokeThickness: 2,
+            })
+            .setOrigin(0.5)
+            .setAlpha(0.26)
+            .setDepth(2.2)
+            .setVisible(false);
+
+          this.tweens.add({
+            targets: needWaterLabel,
+            alpha: { from: 0.15, to: 0.38 },
+            duration: 900,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+
+          slot.watered = false;
+          slot.wet = wet;
+          slot.readyLabel = readyLabel;
+          slot.needWaterLabel = needWaterLabel;
 
           this.slots.push(slot);
         }
@@ -514,17 +606,14 @@ export class FarmScene extends Phaser.Scene {
       // Kolom kiri (jagung & wortel) di sisi kiri, kolom kanan di sisi kanan.
       const leftSide = pos.x < 640;
       const hx = leftSide ? pos.x - 9 : pos.x + PLOT_W + 9;
-      // Ukuran tombol PANEN: 22 x 88 (tebal sama dengan TANAM SEMUA, lebih ramping)
       const H_BTN_W = 22;
       const H_BTN_H = 88;
-      // ujung bawah tombol menempel ke ujung pagar bawah lahan
       const hy = pos.y + PLOT_H - H_BTN_H / 2;
       const hb = this.add
         .rectangle(hx, hy, H_BTN_W, H_BTN_H, 0x2a1608, 0.92)
         .setStrokeStyle(2, 0xe8d5a8)
         .setDepth(3.2)
         .setInteractive({ useHandCursor: true });
-      // Huruf ditumpuk vertikal (tidak diputar) supaya terbaca tegak.
       this.add
         .text(hx, hy, "H\nA\nR\nV\nE\nS\nT", {
           fontFamily: '"Press Start 2P", monospace',
@@ -565,15 +654,99 @@ export class FarmScene extends Phaser.Scene {
     }
   }
 
+  /** Bersihkan semua petak (dipakai saat ronde baru dimulai). */
+  resetPlots() {
+    for (const slot of this.slots) {
+      slot.sprite?.destroy();
+      slot.sprite = null;
+      slot.stage = 0;
+      slot.plantedAt = 0;
+      slot.watered = false;
+      slot.wet.setVisible(false);
+      slot.readyLabel.setVisible(false);
+      slot.needWaterLabel.setVisible(false);
+      slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
+    }
+  }
+
   private clickSlot(slot: Slot) {
+    const tool = getTool();
+
+    // 1) Pot air: menyiram (boleh sebelum menanam)
+    if (tool === "water") {
+      this.waterSlot(slot);
+      return;
+    }
+
+    // 2) Cangkul: memanen
+    if (tool === "hoe") {
+      if (slot.stage === 3) {
+        this.harvest(slot);
+        this.playPlantSfx();
+      } else if (slot.stage === 0) {
+        this.say("Nothing planted here yet.");
+      } else if (!slot.watered) {
+        this.say("Water it first – pick the watering can.");
+      } else {
+        const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
+        this.say(`Still Growing – ${left}s left.`);
+      }
+      return;
+    }
+
+    // 3) Tangan kosong: menanam di petak kosong
     if (slot.stage === 0) {
       if (this.plant(slot)) this.playPlantSfx();
-    } else if (slot.stage === 3) {
-      this.harvest(slot);
-      this.playPlantSfx();
+      return;
+    }
+    if (slot.stage === 3) {
+      this.say("Use the hoe (cangkul) to harvest.");
+      return;
+    }
+    if (!slot.watered) {
+      this.say("Water it first – pick the watering can.");
+      return;
+    }
+    const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
+    this.say(`Still Growing – ${left}s left.`);
+  }
+
+  /** Siram satu petak. Boleh sebelum menanam ("SIAP - TANAM"). */
+  private waterSlot(slot: Slot) {
+    if (slot.watered) {
+      this.say("This plot is already watered.");
+      return;
+    }
+    slot.watered = true;
+    slot.wet.setVisible(true);
+    slot.needWaterLabel.setVisible(false);
+    this.playWaterSfx();
+    this.spawnWaterSplash(slot);
+
+    if (slot.stage === 0) {
+      slot.readyLabel.setVisible(true);
+      this.say("Soil is ready – plant a seed here.");
     } else {
-      const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
-      this.say(`Still Growing – ${left}s left.`);
+      slot.plantedAt = this.time.now; // tumbuh mulai sekarang
+      slot.readyLabel.setVisible(false);
+      this.say("Watered – the crop is growing now (20s).");
+    }
+  }
+
+  /** Percikan air kecil saat menyiram. */
+  private spawnWaterSplash(slot: Slot) {
+    for (let i = 0; i < 5; i++) {
+      const drop = this.add
+        .circle(slot.x + Phaser.Math.Between(-10, 10), slot.y + 4, 2, 0x8fd3ff, 0.9)
+        .setDepth(2.6);
+      this.tweens.add({
+        targets: drop,
+        y: drop.y - Phaser.Math.Between(10, 18),
+        alpha: 0,
+        duration: Phaser.Math.Between(300, 500),
+        ease: "Quad.easeOut",
+        onComplete: () => drop.destroy(),
+      });
     }
   }
 
@@ -605,6 +778,17 @@ export class FarmScene extends Phaser.Scene {
     void voice.play().catch(() => {});
   }
 
+  private playWaterSfx() {
+    const a = this.waterSfx;
+    if (!a) return;
+    const now = performance.now();
+    if (now - this.waterSfxAt < 90) return; // anti tumpuk saat klik cepat
+    this.waterSfxAt = now;
+    const voice = a.cloneNode(true) as HTMLAudioElement;
+    voice.volume = a.volume;
+    void voice.play().catch(() => {});
+  }
+
   private playPlantSfx() {
     const a = this.plantSfx;
     if (!a) return;
@@ -622,7 +806,10 @@ export class FarmScene extends Phaser.Scene {
     }
     this.seeds[slot.crop] -= 1;
     slot.stage = 1;
-    slot.plantedAt = this.time.now;
+    // Belum disiram? Tanaman menunggu — timer baru jalan setelah disiram.
+    slot.plantedAt = slot.watered ? this.time.now : 0;
+    slot.readyLabel.setVisible(false);
+    slot.needWaterLabel.setVisible(!slot.watered);
     slot.sprite = this.add
       .image(slot.zone.x, slot.zone.y, `crop-${slot.crop}-1-out`)
       .setOrigin(0.5, 0.5)
@@ -632,7 +819,11 @@ export class FarmScene extends Phaser.Scene {
     // animasi kecil saat bibit masuk tanah (skala dasar 2x)
     slot.sprite.setScale(CROP_SCALE * 0.6);
     this.tweens.add({ targets: slot.sprite, scale: CROP_SCALE, duration: 220, ease: "Back.easeOut" });
-    this.say(`${CROPS[slot.crop].name} planted.`);
+    this.say(
+      slot.watered
+        ? `${CROPS[slot.crop].name} planted – already watered, growing now.`
+        : `${CROPS[slot.crop].name} planted. Water it with the watering can.`
+    );
     recordPlant(slot.crop, 1);
     return true;
   }
@@ -645,6 +836,11 @@ export class FarmScene extends Phaser.Scene {
     const sprite = slot.sprite;
     slot.stage = 0;
     slot.sprite = null;
+    slot.watered = false;
+    slot.plantedAt = 0;
+    slot.wet.setVisible(false);
+    slot.readyLabel.setVisible(false);
+    slot.needWaterLabel.setVisible(false);
     slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
 
     if (sprite) {
@@ -663,12 +859,18 @@ export class FarmScene extends Phaser.Scene {
     recordHarvest(slot.crop, 1);
   }
 
-  /** Panen satu petak tanpa pesan — dipakai panen berurutan. */
+  /** Panen satu petak tanpa pesan — dipakai tombol HARVEST.
+   *  Pencatatannya dilakukan sekali di harvestCrop() (agregat), bukan di sini. */
   private harvestQuiet(slot: Slot) {
     this.inventory[slot.crop] += 1;
     const sprite = slot.sprite;
     slot.stage = 0;
     slot.sprite = null;
+    slot.watered = false;
+    slot.plantedAt = 0;
+    slot.wet.setVisible(false);
+    slot.readyLabel.setVisible(false);
+    slot.needWaterLabel.setVisible(false);
     slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
     if (sprite) {
       this.tweens.add({
@@ -710,7 +912,9 @@ export class FarmScene extends Phaser.Scene {
       slot.stage = 1;
       // waktu tanam dimundurkan sesuai jeda, supaya umur tanaman dihitung
       // sejak bibit benar-benar muncul (bukan sejak tombol ditekan).
-      slot.plantedAt = this.time.now + delayMs;
+      slot.plantedAt = slot.watered ? this.time.now + delayMs : 0;
+      slot.readyLabel.setVisible(false);
+      slot.needWaterLabel.setVisible(!slot.watered);
 
       this.time.delayedCall(delayMs, () => {
         slot.sprite = this.add
@@ -773,6 +977,7 @@ export class FarmScene extends Phaser.Scene {
 
   private say(msg: string) {
     this.notice = msg;
+    this.noticeSeq += 1;
     this.noticeUntil = this.time.now + 2600;
   }
 
@@ -793,6 +998,8 @@ export class FarmScene extends Phaser.Scene {
     if (this.input) this.input.enabled = this.front;
     if (this.input?.keyboard) this.input.keyboard.enabled = this.front;
     if (this.front) {
+      // Setiap masuk kebun, pemain memegang tangan kosong lagi.
+      resetTool();
       this.scene.bringToTop();
       // Setiap masuk kebun, pemain muncul di tengah jalan (persimpangan).
       this.player?.setPosition(FARM_SPAWN.x, FARM_SPAWN.y);
@@ -860,6 +1067,7 @@ export class FarmScene extends Phaser.Scene {
     const now = this.time.now;
     for (const slot of this.slots) {
       if (slot.stage === 0 || slot.stage === 3) continue;
+      if (!slot.watered || slot.plantedAt === 0) continue; // menunggu disiram
       const age = (now - slot.plantedAt) / 1000;
       const next: Stage = age >= STAGE_SECONDS * 2 ? 3 : age >= STAGE_SECONDS ? 2 : 1;
       if (next !== slot.stage) {
@@ -904,6 +1112,7 @@ export class FarmScene extends Phaser.Scene {
       revenue: this.revenue,
       spent: this.spent,
       notice: this.notice,
+      noticeSeq: this.noticeSeq,
     };
   }
 

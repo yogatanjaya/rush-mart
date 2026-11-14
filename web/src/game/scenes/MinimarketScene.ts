@@ -243,6 +243,8 @@ export class MinimarketScene extends Phaser.Scene {
 
   notice: string | null = null;
   private noticeUntil = 0;
+  /** nomor urut pesan; naik tiap say() supaya pesan sama tetap tampil. */
+  private noticeSeq = 0;
   private shelves: Shelf[] = [];
   private customers: Customer[] = [];
   private queue: Customer[] = [];
@@ -888,6 +890,7 @@ export class MinimarketScene extends Phaser.Scene {
 
   private say(msg: string) {
     this.notice = msg;
+    this.noticeSeq += 1;
     this.noticeUntil = this.time.now + 2400;
   }
 
@@ -1559,6 +1562,7 @@ export class MinimarketScene extends Phaser.Scene {
       revenue: economy.revenue,
       spent: economy.spent,
       notice: this.notice,
+      noticeSeq: this.noticeSeq,
     };
   }
 }

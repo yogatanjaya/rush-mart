@@ -10,11 +10,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { connectWallet, ensureSessionKey, disconnectWallet, subscribe as subscribeWallet, recordRound } from "./near/wallet";
 import Phaser from "phaser";
 import { FarmScene } from "./game/scenes/FarmScene";
-import { onOpenSeedShop, onGoToScene, onPayNudge } from "./game/ui";
+import { onOpenSeedShop, onGoToScene, onPayNudge, onToolChanged, setTool, type Tool } from "./game/ui";
 import { MinimarketScene } from "./game/scenes/MinimarketScene";
 import { economy, resetEconomy } from "./game/economy";
 import { isPlaying, startSession, stopSession } from "./game/flow";
 import { CROPS, CROP_ORDER, type CropId, type WorldSnapshot } from "./game/types";
+
+/** Alat di ujung kanan inventory bar (hanya ini yang bisa diklik). */
+const TOOLS: { id: Tool; title: string }[] = [
+  { id: "hand", title: "Tangan kosong (tanam / lihat)" },
+  { id: "water", title: "Pot air (siram petak)" },
+  { id: "hoe", title: "Cangkul (panen)" },
+];
 import "./game.css";
 
 function CoinIcon() {
@@ -48,6 +55,7 @@ const EMPTY: WorldSnapshot = {
   revenue: 0,
   spent: 0,
   notice: null,
+  noticeSeq: 0,
 };
 
 /** Ringkasan cara bermain — tampil di bawah papan, di layar PLAY & popup hasil. */
@@ -57,9 +65,10 @@ const HOW_TO_PLAY_STEPS = [
   "They line up at the QUEUE mat — stand on the green carpet, then click the customer at the front.",
   "Type the correct CHANGE, then press DONE.",
   "Shelves run empty. Go to FARM and click the BUY SEED stall.",
-  "Buy seeds, press PLANT ALL, and wait ~15s for the crops.",
-  "While waiting, go back to MART and serve the queue (each customer waits about 20–40 seconds).",
-  "Harvest, return to MART, and click each shelf to restock.",
+  "Buy seeds, then click empty plots to plant (or press PLANT ALL).",
+  "Pick the WATERING CAN in the inventory bar and water each plot — crops only grow once watered (~20s).",
+  "While waiting, go back to MART and serve the queue (the customer at the front waits 40 seconds).",
+  "Pick the HOE to harvest plot by plot (or click HARVEST), then return to MART and restock.",
   "Reach GOALS 100/100 before the 150-second timer ends.",
 ];
 
@@ -98,6 +107,7 @@ export default function Game() {
   const lowStockTimer = useRef<number | null>(null);
   const [payTip, setPayTip] = useState<null | "farm" | "mart">(null);
   const [emptyShelves, setEmptyShelves] = useState(false);
+  const [tool, setToolState] = useState<Tool>("hand");
   const emptySince = useRef<number | null>(null);
   const payTipTimer = useRef<number | null>(null);
 
@@ -267,7 +277,7 @@ export default function Game() {
     wortel: 15,
     kentang: 15,
   });
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; seq: number } | null>(null);
   // Isian kasir: total belanja dihitung otomatis, pemain hanya mengisi kembalian.
   const [payChange, setPayChange] = useState("");
   const changeRef = useRef<HTMLInputElement>(null);
@@ -345,9 +355,10 @@ export default function Game() {
   }, []);
 
   // Toast dari notice scene
+  // Pakai nomor urut: pesan dengan teks sama tetap memicu toast baru.
   useEffect(() => {
-    if (world.notice) setToast(world.notice);
-  }, [world.notice]);
+    if (world.notice) setToast({ text: world.notice, seq: world.noticeSeq });
+  }, [world.noticeSeq]);
 
   useEffect(() => {
     if (!toast) return;
@@ -483,6 +494,9 @@ export default function Game() {
     }
   }, []);
 
+  // Alat bisa direset oleh scene (mis. setiap masuk kebun → tangan kosong).
+  useEffect(() => onToolChanged((t) => setToolState(t)), []);
+
   // Semua rak kosong > 3 detik: panel bertahan sampai ada rak terisi lagi.
   useEffect(() => {
     if (!playing) {
@@ -596,6 +610,8 @@ export default function Game() {
     switchScene("MinimarketScene");
     const mini = gameRef.current?.scene.getScene("MinimarketScene") as MinimarketScene | null;
     mini?.resetRound();
+    const farm = gameRef.current?.scene.getScene("FarmScene") as FarmScene | null;
+    farm?.resetPlots();
   }, [switchScene]);
 
   // Pintu di peta memanggil ini lewat game/ui.ts (klik atau SPACE).
@@ -676,8 +692,25 @@ export default function Game() {
         </div>
       )}
 
-          {/* Bar inventory: 4 kotak hasil panen + 4 kotak bibit. */}
+          {/* Bar inventory: 3 alat (kiri) + jeda 5 px + 4 hasil panen + 4 bibit. */}
           <div className="inv-bar">
+            {TOOLS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`inv-cell inv-tool${tool === t.id ? " selected" : ""}`}
+                title={t.title}
+                onClick={() => {
+                  setToolState(t.id);
+                  setTool(t.id);
+                }}
+              >
+                <img src={`assets/pixel/tool-${t.id}.png`} alt={t.title} />
+              </button>
+            ))}
+
+            <div className="inv-gap" />
+
             {CROP_ORDER.map((crop) => (
               <div
                 key={`hasil-${crop}`}
@@ -770,7 +803,7 @@ export default function Game() {
                       if (farm()?.buySeed(crop, qty[crop], true)) bought += CROPS[crop].seed * qty[crop];
                     }
                   }
-                  if (bought > 0) { setToast(`Seed purchase: ${bought} coins`); playBuy(); }
+                  if (bought > 0) { setToast({ text: `Seed purchase: ${bought} coins`, seq: Date.now() }); playBuy(); }
                   setShowSeeds(false);
                 }}
               >
@@ -857,7 +890,7 @@ export default function Game() {
         </div>
       )}
 
-      {toast && <div className="game-toast">{toast}</div>}
+      {toast && <div className="game-toast">{toast.text}</div>}
       {/* Disembunyikan saat pemain sudah berada di kebun (tidak perlu disuruh ke FARM). */}
       {emptyShelves && world.activeScene !== "farm" && (
         <div className="mart-tip empty-shelves" role="note">

@@ -21,7 +21,7 @@ export const CROPS: Record<
 export const CROP_ORDER: CropId[] = ["jagung", "tomat", "wortel", "kentang"];
 
 /** Detik nyata per tahap tumbuh. 3 tahap = 2 transisi = 15 detik total. */
-export const STAGE_SECONDS = 7.5;
+export const STAGE_SECONDS = 10;
 
 /** Slot per lahan: 3 × 3. */
 export const SLOTS_PER_PLOT = 15;
@@ -101,4 +101,6 @@ export interface WorldSnapshot {
   spent: number;
   /** pesan singkat untuk toast di HUD */
   notice: string | null;
+  /** naik setiap kali scene memanggil say() — supaya pesan yang sama tetap dianggap baru. */
+  noticeSeq: number;
 }
