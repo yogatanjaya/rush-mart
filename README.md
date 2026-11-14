@@ -92,6 +92,7 @@ and running the register — happen inside the same 180 seconds.
 | stand on the green cashier mat + click a queued customer | opens the payment panel |
 | click (or `SPACE` near) the **FARM** door / the **Minimart** door | switch location |
 | HUD `♪ ON` / `♪ OFF` | toggle background music |
+| **`P`** or the HUD `❚❚` button | **pause / resume** — the clock, customers, crop growth and notice timers all freeze |
 
 ---
 
@@ -117,6 +118,7 @@ and running the register — happen inside the same 180 seconds.
 | Rule | Value |
 |---|---|
 | Round length | **180 s** (clock counts down from `03:00`) |
+| Pause | `P` or the HUD button — freezes the clock, NPCs, growth and notice timers; resume continues from the same moment |
 | Win condition | GOALS ≥ 100 when the clock hits `00:00` |
 | Coins floor | coins can never go below **0** |
 | GOALS floor | GOALS **can go negative** (shown as e.g. `-12/100`) |
@@ -177,9 +179,10 @@ including shelves back to their starting stock.
 
 Traffic comes in **waves of 2–3 customers**, one or two seconds apart, plus one
 extra customer halfway through the gap. Waves are separated by **18–28 seconds**,
-and the first wave arrives **1 second** after the round starts. That works out at
-about **25 customers** and **~66 requested items** per round, against a maximum
-supply of 86 items (43 on the shelves + 43 starting seeds).
+and the first wave arrives **1 second** after the round starts. Over a 180-second
+round that works out at about **30 customers** and **~80 requested items**, against
+a maximum supply of 86 items (43 on the shelves + 43 starting seeds) — so the shop
+can be kept stocked, but only if you keep farming.
 
 **Cashier.** Stand on the green mat and click the customer at the front of the
 queue. The panel shows:
@@ -320,7 +323,7 @@ chip stays `on-chain / record off` and clicking it only shows a hint.
 
 ### Proof it really works
 
-One real 150-second round produced **65 transactions**: 20 `record_sale`,
+One real round (recorded while the round length was still 150 s) produced **65 transactions**: 20 `record_sale`,
 14 `record_refill`, 10 `record_harvest`, 8 `record_purchase`, 8 `record_plant`,
 2 `record_fail`, 1 `record_round`, 2 `ADD_KEY` — all successful. Every row
 (block height, time, hash) is in [`docs/ONCHAIN-TX-LOG.md`](docs/ONCHAIN-TX-LOG.md).
