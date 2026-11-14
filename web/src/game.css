@@ -1900,7 +1900,7 @@
   position: absolute;
   left: 50%;
   /* dinaikkan 50 px lagi (total 100 px dari tengah) — hanya posisi, opacity tetap */
-  top: calc(50% - 100px);
+  top: calc(50% - 200px);
   transform: translate(-50%, -50%);
   min-width: 380px;
   padding: 18px 22px 20px;
