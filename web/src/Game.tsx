@@ -60,16 +60,16 @@ const EMPTY: WorldSnapshot = {
 
 /** Ringkasan cara bermain — tampil di bawah papan, di layar PLAY & popup hasil. */
 const HOW_TO_PLAY_STEPS = [
-  "Use WASD (or arrow keys) to walk, and left-click to interact.",
-  "Customers walk in and take items off the shelves.",
-  "They line up at the QUEUE mat — stand on the green carpet, then click the customer at the front.",
-  "Type the correct CHANGE, then press DONE.",
-  "Shelves run empty. Go to FARM and click the BUY SEED stall.",
-  "Buy seeds, then click empty plots to plant (or press PLANT ALL).",
-  "Pick the WATERING CAN in the inventory bar and water each plot — crops only grow once watered (~20s).",
-  "While waiting, go back to MART and serve the queue (the customer at the front waits 40 seconds).",
-  "Pick the HOE to harvest plot by plot (or click HARVEST), then return to MART and restock.",
-  "Reach GOALS 100/100 before the 150-second timer ends.",
+  "Walk with WASD or arrow keys, click to interact.",
+  "Customers take items from the shelves, then line up at the QUEUE mat.",
+  "Stand on the green mat, click the front customer, type the CHANGE, press DONE.",
+  "Shelves run low \u2192 take the door to the FARM.",
+  "Click the BUY SEED tent to buy seeds.",
+  "Slot 1 \u2014 bare hand: click empty plots to plant",
+  "Slot 2 \u2014 watering can: click each plot to water. Crops only grow once watered (15s).",
+  "While waiting, serve the queue (the front customer waits 40s).",
+  "Slot 3 \u2014 hoe: click ripe plots to harvest, then restock the shelves.",
+  "Reach GOALS 100 before the 150s timer ends.",
 ];
 
 function HowToPlay() {
@@ -105,7 +105,8 @@ export default function Game() {
   const [lowStockTip, setLowStockTip] = useState(false);
   const lowStockShown = useRef(false);
   const lowStockTimer = useRef<number | null>(null);
-  const [payTip, setPayTip] = useState<null | "farm" | "mart">(null);
+  const [payTip, setPayTip] = useState<null | { id: number; from: "farm" | "mart"; left: number }>(null);
+  const payTipId = useRef(0);
   const [emptyShelves, setEmptyShelves] = useState(false);
   const [tool, setToolState] = useState<Tool>("hand");
   const [farmGuide, setFarmGuide] = useState(false);
@@ -565,16 +566,25 @@ export default function Game() {
 
   // Perintah dari scene: pelanggan terdepan menunggu > 12 detik.
   useEffect(() => {
-    const off = onPayNudge(() => {
-      setPayTip(viewRef.current === "farm" ? "farm" : "mart");
-      if (payTipTimer.current !== null) window.clearTimeout(payTipTimer.current);
-      payTipTimer.current = window.setTimeout(() => {
-        payTipTimer.current = null;
-        setPayTip(null);
-      }, 4000);
+    const off = onPayNudge((secondsLeft) => {
+      const from = viewRef.current === "farm" ? "farm" : "mart";
+      setPayTip({ id: ++payTipId.current, from, left: Math.max(0, secondsLeft) });
     });
     return off;
   }, []);
+
+  // Panel pembayaran: hitung mundur sisa kesabaran + hilang sendiri setelah 5 detik.
+  useEffect(() => {
+    if (!payTip) return;
+    const tick = window.setInterval(() => {
+      setPayTip((p) => (p ? { ...p, left: Math.max(0, p.left - 1) } : p));
+    }, 1000);
+    const hide = window.setTimeout(() => setPayTip(null), 5000);
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(hide);
+    };
+  }, [payTip?.id]);
 
   // Ronde berakhir: bersihkan notice pembayaran.
   useEffect(() => {
@@ -968,17 +978,18 @@ export default function Game() {
           <b className="guide-panel-title">GUIDE</b>
           <ol>
             <li>Buy seeds &amp; plant with bare hand (Slot 1)</li>
-            <li>Water crops &amp; wait 20s</li>
-            <li>Harvest using the shovel (Slot 3)</li>
+            <li>Water crops &amp; wait 15s</li>
+            <li>Harvest using the hoe (Slot 3)</li>
           </ol>
         </div>
       )}
-      {payTip === "farm" && (
+      {payTip?.from === "farm" && (
         <div className="mart-tip low-stock pay-tip" role="note">
-          <b>Head back to minimart.</b> Someone wants to pay! Step on the green mat and click the NPC.
+          <b>Head back to minimart.</b> Someone wants to pay! Step on the green mat and click the
+          NPC, <span className="pay-tip-count">{payTip.left}s</span> left until NPC mad
         </div>
       )}
-      {payTip === "mart" && (
+      {payTip?.from === "mart" && (
         <div className="mart-tip low-stock pay-tip" role="note">
           Someone wants to pay! Step on the green mat and click the NPC.
         </div>

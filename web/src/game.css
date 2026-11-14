@@ -1873,3 +1873,10 @@
 .mart-tip.guide-panel li {
   margin-bottom: 3px;
 }
+
+/* Angka hitung mundur di notice pembayaran */
+.pay-tip .pay-tip-count {
+  color: #ff5b45;
+  font-weight: 700;
+  -webkit-text-stroke: 0.3px currentColor;
+}

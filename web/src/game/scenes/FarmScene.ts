@@ -39,6 +39,8 @@ const MART_DOOR = { x: 1108, y: 160, w: 56, h: 72 };
 const DOOR_REACH = 130;
 const WORLD_H = 720;
 const SCALE = 2;
+/** Nama yang tampil di atas kepala pemain. */
+const PLAYER_NAME = "Player";
 
 /** Ukuran satu lahan di layar (bingkai + tanah 5x3 slot = 15 slot). */
 const PLOT_W = 320;
@@ -111,6 +113,8 @@ interface Slot {
 
 export class FarmScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
+  /** label nama di atas kepala pemain. */
+  private playerName?: Phaser.GameObjects.Text;
 
   /** Suara tanam 1 bibit (HTMLAudio: bebas kunci audio Phaser). */
   private plantSfx?: HTMLAudioElement;
@@ -457,11 +461,23 @@ export class FarmScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(FARM_SPAWN.x, FARM_SPAWN.y, "player-down-1-out");
     this.player.setDepth(3);
     // sedikit lebih besar dari NPC toko (skala 2) supaya peran pemain menonjol
-    this.player.setScale(SCALE * 1.1);
+    this.player.setScale(SCALE * 1.3);
     this.player.setOrigin(0.5, 1);
     this.player.setCollideWorldBounds(true);
     // badan lebih kecil dari gambar, biar gerakan terasa pas
     this.player.body?.setSize(14, 10);
+
+    // nama pemain di atas kepala
+    this.playerName = this.add
+      .text(this.player.x, this.player.y - 34, PLAYER_NAME, {
+        fontFamily: "Verdana, system-ui, sans-serif",
+        fontSize: "10px",
+        color: "#fff8e2",
+        stroke: "#2a1608",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(6);
     (this.player.body as Phaser.Physics.Arcade.Body).setOffset(3, 15);
 
     for (const block of this.pendingColliders) {
@@ -767,7 +783,7 @@ export class FarmScene extends Phaser.Scene {
     } else {
       slot.plantedAt = this.time.now; // tumbuh mulai sekarang
       slot.readyLabel.setVisible(false);
-      this.say("Watered – the crop is growing now (20s).");
+      this.say("Watered – the crop is growing now (15s).");
     }
   }
 
@@ -1055,6 +1071,7 @@ export class FarmScene extends Phaser.Scene {
     }
     if (this.front) this.movePlayer();
     else (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+    this.playerName?.setPosition(this.player.x, this.player.y - 34);
     this.growCrops();
     this.updateStallPrompt();
     if (this.notice && this.time.now > this.noticeUntil) this.notice = null;
@@ -1080,7 +1097,7 @@ export class FarmScene extends Phaser.Scene {
   private tentDoorHint?: Phaser.GameObjects.Text;
 
   private movePlayer() {
-    const speed = 210;
+    const speed = 350;
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     let vx = 0;
     let vy = 0;

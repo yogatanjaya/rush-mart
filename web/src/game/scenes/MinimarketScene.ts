@@ -52,7 +52,8 @@ const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
 
 // Pemain muncul di tengah karpet kasir (pusat CASHIER_MAT 916+64, 140+28),
 // bukan lagi di pintu ENTRY, supaya langsung terlihat saat masuk minimarket.
-const PLAYER_SPAWN = { x: 980, y: 168 };
+// Spawn pemain: tengah lorong minimarket (bukan di karpet kasir).
+const PLAYER_SPAWN = { x: 747, y: 506 };
 
 // Pintu kayu ke kebun di kiri bawah (digambar di market-bg oleh generator).
 const FARM_DOOR = { x: 132, y: 596, w: 92, h: 84 };
@@ -65,7 +66,9 @@ const DOOR_REACH = 120;
  */
 const WAVE_SIZE = { min: 2, max: 3 };
 const WAVE_GAP_SEC = { min: 1, max: 2 };
-const WAVE_PAUSE_SEC = { min: 15, max: 25 };
+const WAVE_PAUSE_SEC = { min: 18, max: 28 };
+/** Nama yang tampil di atas kepala pemain. */
+const PLAYER_NAME = "Player";
 
 /**
  * Stok yang sudah ada di rak saat game dimulai. Ini "dagangan contoh" supaya
@@ -114,9 +117,9 @@ const NPC_PROFILES: NpcProfile[] = [
     design: "ibu",
     name: "Village Woman",
     minKinds: 2,
-    maxKinds: 3,
+    maxKinds: 2,
     minQty: 2,
-    maxQty: 3,
+    maxQty: 2,
     prefer: ["kentang", "tomat", "jagung", "wortel"],
   },
   {
@@ -141,9 +144,9 @@ const NPC_PROFILES: NpcProfile[] = [
     design: "pemuda",
     name: "Young Man",
     minKinds: 2,
-    maxKinds: 3,
+    maxKinds: 2,
     minQty: 1,
-    maxQty: 3,
+    maxQty: 2,
     prefer: ["jagung", "tomat", "kentang", "wortel"],
   },
   {
@@ -152,7 +155,7 @@ const NPC_PROFILES: NpcProfile[] = [
     minKinds: 2,
     maxKinds: 2,
     minQty: 3,
-    maxQty: 4,
+    maxQty: 2,
     prefer: ["kentang", "tomat", "jagung", "wortel"],
   },
   {
@@ -225,6 +228,8 @@ interface Shelf {
 
 export class MinimarketScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
+  /** label nama di atas kepala pemain. */
+  private playerName?: Phaser.GameObjects.Text;
 
   /** Suara koin memakai pemutar HTML (Phaser tetap "terkunci" karena klik
    *  terjadi di tombol React, bukan di kanvas). */
@@ -663,9 +668,21 @@ export class MinimarketScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(PLAYER_SPAWN.x, PLAYER_SPAWN.y, "player-down-1-out");
     this.player.setDepth(4);
     // sedikit lebih besar dari pelanggan (skala 1.9) supaya peran pemain menonjol
-    this.player.setScale(2.15);
+    this.player.setScale(2.5);
     this.player.setCollideWorldBounds(true);
     this.player.body?.setSize(14, 10);
+
+    // nama pemain di atas kepala
+    this.playerName = this.add
+      .text(this.player.x, this.player.y - 36, PLAYER_NAME, {
+        fontFamily: "Verdana, system-ui, sans-serif",
+        fontSize: "10px",
+        color: "#fff8e2",
+        stroke: "#2a1608",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(6);
     (this.player.body as Phaser.Physics.Arcade.Body).setOffset(3, 15);
 
     for (const block of this.colliders) {
@@ -841,6 +858,7 @@ export class MinimarketScene extends Phaser.Scene {
     // pelanggan tetap datang, mengantri, dan bisa kabur — ronde tidak berhenti.
     if (this.front) this.movePlayer();
     else (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+    this.playerName?.setPosition(this.player.x, this.player.y - 36);
     this.updateCashierMat();
     this.updateShelfHover();
     this.updateCustomers();
@@ -869,7 +887,7 @@ export class MinimarketScene extends Phaser.Scene {
   }
 
   private movePlayer() {
-    const speed = 210;
+    const speed = 350;
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     let vx = 0;
     let vy = 0;
@@ -1157,12 +1175,12 @@ export class MinimarketScene extends Phaser.Scene {
 
     for (const c of this.customers) {
       if (c.state === "leaving") {
-        if (this.moveAlong(c, 150)) c.sprite.destroy();
+        if (this.moveAlong(c, 100)) c.sprite.destroy();
         continue;
       }
 
       if (c.state === "toShelf") {
-        if (this.moveAlong(c, 150)) {
+        if (this.moveAlong(c, 100)) {
           const step = c.plan[c.planIndex];
           // Ambil barang SEKARANG: stok rak langsung berkurang saat diambil.
           const taken = this.removeFromShelf(step.crop, step.qty);
@@ -1207,7 +1225,7 @@ export class MinimarketScene extends Phaser.Scene {
           }
         }
       } else if (c.state === "toCashier") {
-        if (this.moveAlong(c, 150)) {
+        if (this.moveAlong(c, 100)) {
           c.state = "toQueue";
           c.slot = this.queue.length;
           this.queue.push(c);
@@ -1215,7 +1233,7 @@ export class MinimarketScene extends Phaser.Scene {
           c.path = [{ x: slot.x, y: slot.y }];
         }
       } else if (c.state === "toQueue") {
-        if (this.moveAlong(c, 150)) {
+        if (this.moveAlong(c, 100)) {
           c.state = "waiting";
           // Kesabaran hanya berjalan untuk orang pertama di antrian.
           c.patienceUntil = c.slot === 0 ? now + PATIENCE_MS : 0;
@@ -1227,7 +1245,7 @@ export class MinimarketScene extends Phaser.Scene {
           const waitedMs = PATIENCE_MS - (c.patienceUntil - now);
           if (waitedMs >= 12000) {
             c.nudged = true;
-            payNudge();
+            payNudge(Math.max(0, Math.ceil((c.patienceUntil - now) / 1000)));
           }
         }
         if (c.patienceUntil > 0 && now >= c.patienceUntil) {
