@@ -23,8 +23,11 @@ coins** before the timer hits zero.
 | 3 | `cd web && npx tsc --noEmit` | no output (types clean) |
 | 4 | `cd web && npm run build` | `dist/` produced, build succeeds |
 | 5 | open the page, press **PLAY** | round starts, timer at `02:30` |
+| 6 | `cd contract-rushmart && cargo test` | 1 test passes (harvest → sale → round, MT balances, top list) |
+| 7 | `node contract-rushmart/scripts/read-state.mjs <path-to-key.json>` | prints live `get_stats`, `get_top`, `get_recent`, and NEP-245 balances read from testnet |
 
 Requires Node 18+ and a browser. No backend, no database, no API keys.
+The on-chain half is already deployed and live — see **§12**.
 
 ---
 
@@ -199,6 +202,8 @@ seed-cost penalty.
 | Art | 100 % procedurally generated pixel art (`web/scripts/gen_pixel_assets.py`, `gen_market_assets.py`) — no third-party sprites |
 | Audio | Mix of self-synthesised SFX (Python) and royalty-free files; played through `HTMLAudioElement` |
 | Fonts | Press Start 2P + VT323 |
+| Chain | **NEAR testnet** — Rust contract (`near-sdk` 5), NEP-297 events + NEP-245 lite tokens |
+| Wallet | **NEAR Wallet Selector** + **Meteor Wallet**, session key via function-call access key |
 
 **Why the UI is separate from the canvas.** Phaser draws the world; React draws
 the HUD, popups, and the inventory bar. They talk through two small bridges:
@@ -235,34 +240,131 @@ web/
   scripts/
     gen_pixel_assets.py         # farm background, crops, icons
     gen_market_assets.py        # store background, shelves, counter
+    near/wallet.ts              # NEAR: connect Meteor, session key, tx queue, 7 events
   public/assets/                # generated PNGs + SFX + music
-contract/                       # NEAR smart contract (Rust, NEP-245 style)
-docs/                           # design notes, backlog, screenshots
+contract-rushmart/              # LIVE contract: activity ledger + NEP-245 harvest tokens
+  src/lib.rs                    # record_* methods, get_stats/get_top/get_recent, mt_* 
+  scripts/deploy.mjs            # deploy + init to testnet (key read from a file outside the repo)
+  scripts/read-state.mjs        # read-only proof script (stats, leaderboard, token balances)
+  scripts/smoke-test.mjs        # writes 7 real actions to testnet and prints the result
+contract/                       # earlier prototype contract (kept for history, unused by the game)
+docs/                           # design notes, backlog, screenshots, ONCHAIN-TX-LOG.md
 ```
 
 ---
 
-## 12. NEAR status (honest)
+## 12. NEAR on-chain (shipped, testnet)
 
-The Rust contract in `contract/` is **deployed to NEAR testnet** at
-`pasar-pagi-17536.testnet` and responds to `get_world`. The account name is a
-leftover from the project's first title and is kept because the account already
-exists on-chain.
+| | |
+|---|---|
+| Network | **testnet** |
+| Contract | **`rushmart722324.testnet`** |
+| Standards | **NEP-297** (`EVENT_JSON` logs) + **NEP-245 lite** (multi-token) |
+| Wallet | **Meteor Wallet** through NEAR Wallet Selector (testnet) |
+| Signing | one **function-call access key** per session, 0.5 NEAR gas allowance, restricted to the 8 game methods |
 
-**The contract is not yet wired into gameplay.** Rush Mart currently runs fully
-client-side; wallet connection and on-chain state (recording finished runs) are
-the next milestone, not a shipped feature. Nothing in this README claims
-otherwise.
+### What gets written, and when
+
+Every action below is a real transaction signed by the session key — **no wallet
+popup after the first approval**:
+
+| In-game action | Contract method | Payload |
+|---|---|---|
+| `BUY ALL` at the stall | `record_purchase` | crop, qty, coins |
+| plant one plot / `PLANT ALL` | `record_plant` | crop, qty |
+| harvest one plot / `HARVEST` | `record_harvest` | crop, qty → **mints NEP-245 tokens** |
+| customer pays correctly | `record_sale` | NPC name, item breakdown, coins, profit → **burns tokens** |
+| customer lost / wrong change / empty shelf | `record_fail` | NPC name, reason, loss |
+| refill a shelf | `record_refill` | crop, qty |
+| clock hits `00:00` | `record_round` | profit, served, failed, 150 s |
+
+Each call also emits a NEP-297 log, so the full history is permanent and
+indexable without paying storage for every event:
+
+```json
+EVENT_JSON:{"standard":"rushmart","version":"1.0.0","event":"npc_paid",
+            "data":{"account":"…","item":"cornx5","coins":20,"npc":"Village Woman","profit":10}}
+```
+
+Two storage layers, on purpose: **events** (gas only, full detail, permanent) and
+**contract state** (small, fast to read: totals, best profit, leaderboard, token
+balances).
+
+### Player flow
+
+1. `⛓ CONNECT` on the PLAY board → wallet list (Meteor) → connect request.
+2. Panel: **ENABLE RECORDING** → one `AddKey` approval → chip turns
+   `Connected` + `Wallet Connected & Approved`.
+3. Play normally — every action above is queued and sent in the background
+   (serial queue with retry; the game never waits for the chain).
+4. Round end → `record_round`; the HUD chip counts saved actions.
+
+Without a wallet the game is **fully playable** — recording is optional. The HUD
+chip stays `on-chain / record off` and clicking it only shows a hint.
+
+### Proof it really works
+
+One real 150-second round produced **65 transactions**: 20 `record_sale`,
+14 `record_refill`, 10 `record_harvest`, 8 `record_purchase`, 8 `record_plant`,
+2 `record_fail`, 1 `record_round`, 2 `ADD_KEY` — all successful. Every row
+(block height, time, hash) is in [`docs/ONCHAIN-TX-LOG.md`](docs/ONCHAIN-TX-LOG.md).
+
+Read the live state yourself:
+
+```bash
+node contract-rushmart/scripts/read-state.mjs /path/to/your-key.json
+# STATS: {"seeds_bought":135,"harvested":134,"items_sold":96,...}
+# TOP:   [["rushmart722324.testnet",175]]
+# MT corn: "18"   (47 harvested − 29 sold)
+```
+
+Or in a block explorer:
+`https://testnet.nearblocks.io/address/rushmart722324.testnet`
+
+### Rebuild / redeploy
+
+```bash
+cd contract-rushmart
+cargo test --lib                                  # unit test
+cargo build --target wasm32-unknown-unknown --release
+node scripts/deploy.mjs /path/to/key.json         # deploy + init (uses testnet RPC)
+```
+
+The private key is **never** in this repo: it lives in a file outside it, and
+`.gitignore` blocks `*.key`, `*-key.json`, `nearops/` and `.env` from ever being
+committed.
+
+### Limits (stated plainly)
+
+- **Scores are client-reported.** The contract caps input per call
+  (`qty ≤ 15`, `coins ≤ 500`, `profit ≤ 1000`) but cannot prove a score was
+  earned honestly. Real anti-cheat would need delegated actions with a signed
+  game log — out of scope for a hackathon build.
+- **NEP-245 is “lite”**: `mt_balance_of`, `mt_batch_balance_of`, `mt_supply`,
+  `mt_metadata`, `mt_transfer` are implemented; approval management and
+  `storage_deposit` are not. The contract pays storage for new token balances
+  from its own testnet balance, so players never have to deposit.
+- **Session key handling**: the key sits in `localStorage` while the page is open
+  and is **deleted on every page load**, so a refresh means connect + approve
+  again. This is deliberate: it keeps “refresh to stop recording” true.
+- **Testnet only.** Storage economics on mainnet would need `storage_deposit`
+  (per-player registration) rather than the contract paying.
 
 ---
 
 ## 13. Roadmap
 
-1. Wallet connect (NEAR) + record each finished run on-chain.
-2. Save/restore run summary as a permanent leaderboard entry.
-3. More crops, more customer archetypes, price events.
-4. Mobile/touch controls.
-5. Localisation (Indonesian + English).
+Done: wallet connect, session keys, per-action on-chain recording, NEP-245
+harvest tokens, leaderboard storage (`get_top`).
+
+Next:
+
+1. Leaderboard UI on the result board (the data is already on-chain).
+2. NEP-245 “full” — approval management + `storage_deposit` for mainnet.
+3. Delegated actions (NEP-366) so scores can be verified instead of trusted.
+4. More crops, more customer archetypes, price events.
+5. Mobile/touch controls.
+6. Localisation (Indonesian + English).
 
 ---
 
