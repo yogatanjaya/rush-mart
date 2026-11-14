@@ -7,6 +7,7 @@
 //   Phaser → React : scene.snapshot() dibaca tiap 150 ms (polling ringan)
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { connectWallet, ensureSessionKey, subscribe as subscribeWallet, recordRound } from "./near/wallet";
 import Phaser from "phaser";
 import { FarmScene } from "./game/scenes/FarmScene";
 import { onOpenSeedShop } from "./game/ui";
@@ -81,6 +82,22 @@ export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const [world, setWorld] = useState<WorldSnapshot>(EMPTY);
   const [showSeeds, setShowSeeds] = useState(false);
+
+  // Status wallet on-chain (connect + kunci sesi). Game tetap jalan tanpa wallet.
+  const [wallet, setWallet] = useState<{ status: string; accountId: string; pending: number }>({
+    status: "off",
+    accountId: "",
+    pending: 0,
+  });
+  useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
+
+  const onWalletClick = useCallback(async () => {
+    if (!wallet.accountId) {
+      await connectWallet();
+      return;
+    }
+    if (wallet.status !== "on") await ensureSessionKey();
+  }, [wallet.accountId, wallet.status]);
   /** Notice bar di atas tenda BUY SEED — muncul 3 detik setiap masuk kebun. */
   const [tentHint, setTentHint] = useState(false);
 
@@ -403,6 +420,8 @@ export default function Game() {
     if (timeUpRef.current) return;
     timeUpRef.current = true;
     setResult(kind);
+    // Catat hasil ronde ke chain (kalau wallet aktif; kalau tidak, dilewati).
+    recordRound(economy.profit, economy.served, economy.failed, PLAY_SECONDS);
     stopSession();
     if (sceneRef.current instanceof MinimarketScene) sceneRef.current.timeUp();
   }, []);
@@ -447,6 +466,13 @@ export default function Game() {
       {/* ─── HUD atas ───────────────────────────────────────────────────── */}
       <div className="hud" onPointerDown={(e) => e.stopPropagation()}>
         <div className="hud-left">
+          <button
+            className={`hud-chip is-${wallet.status}`}
+            onClick={onWalletClick}
+            title={wallet.accountId || "connect wallet to record on-chain"}
+          >
+            {wallet.status === "on" ? "⛓ REC" : "⛓ OFF"}
+          </button>
           <button
             className={`hud-btn hud-music${musicOn ? "" : " is-off"}`}
             onClick={toggleMusic}
@@ -731,12 +757,18 @@ export default function Game() {
       {/* ─── Layar PLAY: pemain belum bisa bergerak sebelum menekan tombol ── */}
       {!playing && (
         <div className="start-backdrop">
-          <div className="start-frame" role="dialog" aria-label="Mulai permainan">
+          <div className="start-frame start-frame--play" role="dialog" aria-label="Mulai permainan">
             <div className="start-title">RUSH MART</div>
             <button type="button" className="start-play" onClick={startGame}>
               PLAY
             </button>
             <div className="start-hint">Press to Play</div>
+            <div className="wallet-row">
+              <button type="button" className={`wallet-chip is-${wallet.status}`} onClick={onWalletClick}>
+                {wallet.status === "on" ? "⛓ ON" : wallet.status === "connecting" ? "⛓ …" : "⛓ CONNECT"}
+              </button>
+              <span className="wallet-note">Wallet to get on-chain record</span>
+            </div>
           </div>
           <HowToPlay />
         </div>

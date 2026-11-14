@@ -21,6 +21,7 @@ import {
 } from "../types";
 import { economy, saleProfit } from "../economy";
 import { isPlaying } from "../flow";
+import { recordSale, recordFail, recordRefill } from "../../near/wallet";
 
 const W = 1280;
 const H = 720;
@@ -167,6 +168,12 @@ const NPC_PROFILES: NpcProfile[] = [
     prefer: ["jagung", "tomat", "wortel", "kentang"],
   },
 ];
+
+/** Nama tampilan NPC dari id desainnya (dipakai saat mencatat ke chain). */
+function npcName(id: NpcDesign) {
+  return NPC_PROFILES.find((p) => p.design === id)?.name ?? String(id);
+}
+
 
 /** Lorong vertikal di celah antar kolom rak — dipakai untuk pindah baris. */
 const LANE_X = 330;
@@ -552,6 +559,7 @@ export class MinimarketScene extends Phaser.Scene {
     if (moved > 0) {
       this.playSfx(this.refillSfx);
       this.say(`${moved} ${CROPS[crop].name} added to the shelf.`);
+      recordRefill(crop, moved);
     } else if (economy.inventory[crop] <= 0) {
       this.say(`No ${CROPS[crop].name} in inventory – harvest some from the FARM first.`);
     } else {
@@ -1084,8 +1092,10 @@ export class MinimarketScene extends Phaser.Scene {
       economy.profit -= loss;
       economy.failed += 1;
       this.say(`Customer ran off – lost ${loss} coins.`);
+      recordFail(npcName(c.design), "ran off (patience)", loss);
     } else {
       this.say("Customer left – unserved.");
+      recordFail(npcName(c.design), "unserved (empty shelves)", 0);
     }
     return loss;
   }
@@ -1182,12 +1192,19 @@ export class MinimarketScene extends Phaser.Scene {
       economy.served += 1;
       this.floatProfit(profitDelta);
       this.say(`Correct payment – +${trueTotal} coins earned, profit +${profitDelta}.`);
+      recordSale(
+        npcName(c.design),
+        req.items.map((it) => ({ crop: it.crop, qty: it.qty })),
+        trueTotal,
+        profitDelta,
+      );
       this.removeFromQueue(c);
       this.leave(c);
     } else {
       // Salah hitung: pelanggan kesal dan pergi, barangnya hangus.
       this.floatProfit(-this.applyAbandonPenalty(c));
       this.say(`Incorrect change – customer left.`);
+      recordFail(npcName(c.design), "wrong change", 0);
       this.removeFromQueue(c);
       this.leave(c);
     }

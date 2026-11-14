@@ -25,6 +25,7 @@ import {
 import { economy } from "../economy";
 import { isPlaying } from "../flow";
 import { openSeedShop } from "../ui";
+import { recordPurchase, recordPlant, recordHarvest } from "../../near/wallet";
 
 const WORLD_W = 1280;
 /** Titik muncul pemain di kebun: tengah persimpangan jalan (biar langsung terlihat). */
@@ -540,6 +541,7 @@ export class FarmScene extends Phaser.Scene {
     slot.sprite.setScale(CROP_SCALE * 0.6);
     this.tweens.add({ targets: slot.sprite, scale: CROP_SCALE, duration: 220, ease: "Back.easeOut" });
     this.say(`${CROPS[slot.crop].name} planted.`);
+    recordPlant(slot.crop, 1);
     return true;
   }
 
@@ -566,6 +568,7 @@ export class FarmScene extends Phaser.Scene {
       });
     }
     this.say(`${CROPS[slot.crop].name} harvested! Sent to inventory.`);
+    recordHarvest(slot.crop, 1);
   }
 
   /** Panen satu petak tanpa pesan — dipakai panen berurutan. */
@@ -635,6 +638,7 @@ export class FarmScene extends Phaser.Scene {
     }
 
     this.say(`${n} ${CROPS[crop].name} seeds planted.`);
+    recordPlant(crop, n);
   }
 
   /** Panen hanya satu jenis tanaman. */
@@ -656,6 +660,7 @@ export class FarmScene extends Phaser.Scene {
       n += 1;
     }
     this.say(`${n} ${CROPS[crop].name} harvested.`);
+    recordHarvest(crop, n);
   }
 
   /** Dipanggil HUD: beli bibit. Mengembalikan false kalau koin kurang.
@@ -670,6 +675,7 @@ export class FarmScene extends Phaser.Scene {
     this.spent += cost;
     this.seeds[crop] += qty;
     if (!quiet) this.say(`Bought ${qty} ${CROPS[crop].name} seeds – ${cost} coins.`);
+    recordPurchase(crop, qty, cost);
     return true;
   }
 
