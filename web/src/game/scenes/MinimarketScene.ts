@@ -49,7 +49,9 @@ const SHELF_POS: { crop: CropId; x: number; y: number }[] = [
 
 const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
 
-const PLAYER_SPAWN = { x: 979, y: 596 };
+// Pemain muncul di tengah karpet kasir (pusat CASHIER_MAT 916+64, 140+28),
+// bukan lagi di pintu ENTRY, supaya langsung terlihat saat masuk minimarket.
+const PLAYER_SPAWN = { x: 980, y: 168 };
 
 /**
  * Traffic pelanggan berbasis gelombang (disetujui Bos Yoga):
