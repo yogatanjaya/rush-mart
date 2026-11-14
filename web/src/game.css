@@ -1880,3 +1880,47 @@
   font-weight: 700;
   -webkit-text-stroke: 0.3px currentColor;
 }
+
+/* Tombol pause di HUD kiri */
+.hud-btn.hud-pause {
+  pointer-events: auto;
+  width: 44px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.hud-btn.hud-pause.is-paused {
+  background: #7da88b;
+  color: #10290f;
+  border-color: #24401f;
+}
+
+/* Overlay saat pause */
+.pause-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 380px;
+  padding: 18px 22px 20px;
+  background: rgba(22, 13, 6, 0.86);
+  border: 2px solid rgba(255, 226, 170, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  color: #fdf0d5;
+  font-family: "VT323", monospace;
+  text-align: center;
+  z-index: 30;
+}
+
+.pause-overlay b {
+  display: block;
+  font-family: "Press Start 2P", monospace;
+  font-size: 18px;
+  letter-spacing: 3px;
+  color: #ffe2ad;
+  margin-bottom: 8px;
+}
+
+.pause-overlay span {
+  font-size: 16px;
+}

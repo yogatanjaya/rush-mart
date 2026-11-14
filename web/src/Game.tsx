@@ -266,6 +266,8 @@ export default function Game() {
   const [playing, setPlaying] = useState(isPlaying());
   // Waktu bermain per level. Mulai jalan setelah PLAY ditekan.
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -360,6 +362,28 @@ export default function Game() {
     };
   }, []);
 
+  // Timer kecil yang ikut berhenti saat pause (dipakai notice/panel).
+  const timerQueue = useRef<{ id: number; left: number; cb: () => void }[]>([]);
+  const timerId = useRef(1);
+  const after = useCallback((ms: number, cb: () => void): number => {
+    const id = timerId.current++;
+    timerQueue.current.push({ id, left: ms, cb });
+    return id;
+  }, []);
+  const cancelAfter = useCallback((id: number) => {
+    timerQueue.current = timerQueue.current.filter((t) => t.id !== id);
+  }, []);
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      if (pausedRef.current) return; // pause: semua timer berhenti
+      const due = timerQueue.current.filter((t) => (t.left -= 100) <= 0);
+      if (due.length === 0) return;
+      timerQueue.current = timerQueue.current.filter((t) => !due.includes(t));
+      for (const t of due) t.cb();
+    }, 100);
+    return () => window.clearInterval(tick);
+  }, []);
+
   // Toast dari notice scene
   // Pakai nomor urut: pesan dengan teks sama tetap memicu toast baru.
   useEffect(() => {
@@ -368,8 +392,8 @@ export default function Game() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2400);
-    return () => window.clearTimeout(t);
+    const id = after(2400, () => setToast(null));
+    return () => cancelAfter(id);
   }, [toast]);
 
   /**
@@ -486,12 +510,12 @@ export default function Game() {
 
   // Jam bermain: berkurang 1 detik selama ronde berjalan.
   useEffect(() => {
-    if (!playing || result !== null) return;
+    if (!playing || result !== null || paused) return;
     const id = window.setInterval(() => {
       setTimeLeft((t) => (t === null ? null : Math.max(0, t - 1)));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [playing, result]);
+  }, [playing, result, paused]);
 
   // DEV: ?autoplay=1 menekan PLAY otomatis (dipakai untuk screenshot/demo).
   useEffect(() => {
@@ -499,6 +523,20 @@ export default function Game() {
       setTimeout(() => (document.querySelector(".start-play") as HTMLButtonElement)?.click(), 500);
     }
   }, []);
+
+  // Tombol P: pause / lanjutkan (berguna saat merekam demo).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      if (e.key !== "p" && e.key !== "P") return;
+      if (!playing || result !== null) return;
+      e.preventDefault();
+      setPaused((p) => !p);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [playing, result]);
 
   // Tombol angka 1/2/3 memilih alat (sama seperti klik di inventory bar).
   useEffect(() => {
@@ -531,11 +569,24 @@ export default function Game() {
     if (world.activeScene !== "farm" || farmGuideShown.current) return;
     farmGuideShown.current = true;
     setFarmGuide(true);
-    farmGuideTimer.current = window.setTimeout(() => {
+    farmGuideTimer.current = after(5000, () => {
       farmGuideTimer.current = null;
       setFarmGuide(false);
-    }, 5000);
+    });
   }, [world.activeScene, playing]);
+
+  // PAUSE: bekukan kedua scene (jam, NPC, tanaman, notice Phaser ikut berhenti).
+  useEffect(() => {
+    pausedRef.current = paused;
+    const game = gameRef.current;
+    if (!game) return;
+    for (const key of ["FarmScene", "MinimarketScene"]) {
+      const sc = game.scene.getScene(key);
+      if (!sc) continue;
+      if (paused) game.scene.pause(key);
+      else game.scene.resume(key);
+    }
+  }, [paused]);
 
   // Alat bisa direset oleh scene (mis. setiap masuk kebun → tangan kosong).
   useEffect(() => onToolChanged((t) => setToolState(t)), []);
@@ -588,12 +639,13 @@ export default function Game() {
   useEffect(() => {
     if (!payTip) return;
     const tick = window.setInterval(() => {
+      if (pausedRef.current) return; // pause: hitung mundur berhenti
       setPayTip((p) => (p ? { ...p, left: Math.max(0, p.left - 1) } : p));
     }, 1000);
-    const hide = window.setTimeout(() => setPayTip(null), 5000);
+    const hide = after(5000, () => setPayTip(null));
     return () => {
       window.clearInterval(tick);
-      window.clearTimeout(hide);
+      cancelAfter(hide);
     };
   }, [payTip?.id]);
 
@@ -624,10 +676,10 @@ export default function Game() {
 
     lowStockShown.current = true;
     setLowStockTip(true);
-    lowStockTimer.current = window.setTimeout(() => {
+    lowStockTimer.current = after(5000, () => {
       lowStockTimer.current = null;
       setLowStockTip(false);
-    }, 5000);
+    });
   }, [world.shelves, playing, payTip]);
 
   // Cloud tip di atas kepala pemain: muncul saat ronde dimulai, hilang setelah 10 detik.
@@ -637,8 +689,8 @@ export default function Game() {
       return;
     }
     setMartTip(true);
-    const id = window.setTimeout(() => setMartTip(false), 5000);
-    return () => window.clearTimeout(id);
+    const id = after(5000, () => setMartTip(false));
+    return () => cancelAfter(id);
   }, [playing, result]);
 
   /** Ronde berakhir: kunci permainan dan tampilkan popup hasil. */
@@ -740,6 +792,13 @@ export default function Game() {
           >
             <span className="hud-music-icon" aria-hidden="true">♪</span>
             <span>{musicOn ? "ON" : "OFF"}</span>
+          </button>
+          <button
+            className={`hud-btn hud-pause${paused ? " is-paused" : ""}`}
+            onClick={() => setPaused((p) => !p)}
+            title={paused ? "Lanjutkan (P)" : "Pause (P)"}
+          >
+            <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
           </button>
         </div>
 
@@ -975,6 +1034,12 @@ export default function Game() {
         </div>
       )}
 
+      {paused && (
+        <div className="pause-overlay" role="note">
+          <b>PAUSED</b>
+          <span>Press P or the pause button to continue</span>
+        </div>
+      )}
       {toast && (
         <div className={`game-toast${world.activeScene === "farm" ? " farm-toast" : ""}`}>
           {toast.text}
