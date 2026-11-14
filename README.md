@@ -33,15 +33,16 @@ The on-chain half is already deployed and live — see **§12**.
 
 ## 2. The two places
 
-The game is one screen with two locations you switch between with a HUD button.
+The game is one screen with two locations you walk between through **doors**: the wooden `FARM` door in the store, and the `Minimart` door on the barn in the farm.
 
 **MINIMART** — the store floor. Four shelves (Corn, Tomato, Carrot, Potato),
 a red QUEUE carpet, a cashier counter, and an ENTRY door. Customers spawn at the
 door, walk to shelves, pick items, and queue up.
 
 **FARM** — four plots of land (3 × 5 slots each), a dirt road, and a **BUY SEED**
-stall on the left edge. You buy seeds, plant them, wait for them to grow, and
-harvest them into your inventory.
+stall on the left edge. You buy seeds, plant them with your bare hand, **water each
+plot** with the watering can, wait 15 seconds for the crop to grow, then harvest
+with the hoe.
 
 Your money, seeds, and harvested crops are **shared** between the two places —
 switching scenes never resets anything, and crops keep growing while you are
@@ -54,9 +55,13 @@ inside the minimarket.
 ```
   buy seeds at the stall
           ↓
-  plant them  (15 s to grow)
+  plant them with the bare hand (slot 1)
           ↓
-  harvest → crops go to your inventory
+  water each plot with the watering can (slot 2)
+          ↓
+  wait 15 s for growth  (unwatered seeds never grow)
+          ↓
+  harvest with the hoe (slot 3) → crops go to your inventory
           ↓
   carry them into the minimarket and refill the shelves
           ↓
@@ -78,13 +83,16 @@ and running the register — happen inside the same 150 seconds.
 | Input | Action |
 |---|---|
 | `W A S D` / arrow keys | walk (both locations) |
-| click a farm plot | plant one seed, or harvest a ripe crop |
+| **`1` / `2` / `3`** (or click the tool cells) | pick tool: **1** bare hand, **2** watering can, **3** hoe |
+| bare hand + click an empty plot | plants one seed of that plot's crop |
+| watering can + click a plot | waters it (works before planting too — plot shows `READY PLANT`) |
+| hoe + click a ripe plot | harvests that single crop |
 | `PLANT ALL` (per plot) | plants seeds into every empty slot, one by one |
 | `HARVEST` (per plot, vertical button) | harvests every ripe slot, one by one |
 | click the BUY SEED stall (while standing in front of it) | opens the seed store |
 | click a shelf | refill that shelf from your inventory of that crop |
 | stand on the green cashier mat + click a queued customer | opens the payment panel |
-| HUD `FARM` / `MINIMART` | switch location |
+| click (or `SPACE` near) the **FARM** door / the **Minimart** door | switch location |
 | HUD `♪ ON` / `♪ OFF` | toggle background music |
 
 ---
@@ -93,9 +101,9 @@ and running the register — happen inside the same 150 seconds.
 
 | Crop | Seed cost | Sell price | Profit per item |
 |---|---|---|---|
-| Corn | 2 | 4 | +2 |
+| Corn | 2 | 5 | +3 |
 | Tomato | 4 | 6 | +2 |
-| Carrot | 3 | 4 | +1 |
+| Carrot | 3 | 5 | +2 |
 | Potato | 3 | 6 | +3 |
 
 - **Starting cash:** 200 coins.
@@ -136,11 +144,17 @@ including shelves back to their starting stock.
   stall is a building in the world.)
 - The seed store defaults to **15 of each crop** and has one `BUY ALL` button.
   `GRAND TOTAL` and `BALANCE` are shown at the bottom.
+- **Planting → watering → growth.** A planted seed does **not** grow on its own.
+  Pick the **watering can** and click the plot; only then does the 15-second timer
+  start. An unwatered seed shows `Need Water`, a pre-watered empty plot shows
+  `READY PLANT`, and a ripe crop shows `Harvest`.
 - `PLANT ALL` plants one seed every **110 ms** until the plot is full, so you can
-  watch it fill up. `HARVEST` does the same in reverse.
-- Harvested crops go into an **8-slot inventory bar** pinned to the bottom of the
-  map: the first four slots are harvested produce, the last four are seed packets,
-  each with a quantity counter.
+  watch it fill up. `HARVEST` does the same in reverse. Watering is always manual,
+  one plot per click.
+- Harvested crops go into an **11-cell inventory bar** pinned to the bottom of the
+  map: **3 tool cells** (bare hand, watering can, hoe) on the left, then a 5 px gap,
+  then four harvested-produce cells and four seed packets, each with a counter.
+  Only the three tool cells are clickable.
 
 ---
 
@@ -156,15 +170,18 @@ including shelves back to their starting stock.
 
 **Customers.** Each customer:
 1. spawns at the ENTRY door (aligned with the QUEUE carpet),
-2. picks **1–3 different crops** (60% nearest shelf, 40% random), stopping about
-   **1 second** per shelf,
+2. picks **1–2 different crops, at most 2 items each** (60% nearest shelf,
+   40% random), stopping about **1 second** per shelf,
 3. walks into the queue (up to **5 people** deep — the carpet only covers the
    first two, the rest queue on the floor),
-4. waits with **20–40 seconds of patience**.
+4. waits **40 seconds** — but the timer only runs **once they reach the front**
+   of the queue. Customers behind the front one are never counted.
 
 Traffic comes in **waves of 2–3 customers**, one or two seconds apart, plus one
-extra customer halfway through the gap. Waves are separated by **15–25 seconds**,
-and the first wave arrives **1 second** after the round starts.
+extra customer halfway through the gap. Waves are separated by **18–28 seconds**,
+and the first wave arrives **1 second** after the round starts. That works out at
+about **25 customers** and **~66 requested items** per round, against a maximum
+supply of 86 items (43 on the shelves + 43 starting seeds).
 
 **Cashier.** Stand on the green mat and click the customer at the front of the
 queue. The panel shows:
@@ -272,6 +289,7 @@ popup after the first approval**:
 |---|---|---|
 | `BUY ALL` at the stall | `record_purchase` | crop, qty, coins |
 | plant one plot / `PLANT ALL` | `record_plant` | crop, qty |
+| water a plot | **not recorded** (water is free and unlimited) | — |
 | harvest one plot / `HARVEST` | `record_harvest` | crop, qty → **mints NEP-245 tokens** |
 | customer pays correctly | `record_sale` | NPC name, item breakdown, coins, profit → **burns tokens** |
 | customer lost / wrong change / empty shelf | `record_fail` | NPC name, reason, loss |

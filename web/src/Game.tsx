@@ -554,6 +554,12 @@ export default function Game() {
       return;
     }
     if (performance.now() - roundStart.current < 800) return;
+    // Jangan bertumpuk dengan panel pembayaran.
+    if (payTip) {
+      emptySince.current = null;
+      setEmptyShelves(false);
+      return;
+    }
     if (emptySince.current === null) emptySince.current = Date.now();
     const elapsed = Date.now() - emptySince.current;
     if (elapsed >= 3000) {
@@ -562,7 +568,7 @@ export default function Game() {
     }
     const id = window.setTimeout(() => setEmptyShelves(true), 3000 - elapsed);
     return () => window.clearTimeout(id);
-  }, [world.shelves, playing, result]);
+  }, [world.shelves, playing, result, payTip]);
 
   // Perintah dari scene: pelanggan terdepan menunggu > 12 detik.
   useEffect(() => {
@@ -572,6 +578,11 @@ export default function Game() {
     });
     return off;
   }, []);
+
+  // Panel pembayaran menang prioritas: sembunyikan panel stok menipis saat ia muncul.
+  useEffect(() => {
+    if (payTip) setLowStockTip(false);
+  }, [payTip]);
 
   // Panel pembayaran: hitung mundur sisa kesabaran + hilang sendiri setelah 5 detik.
   useEffect(() => {
@@ -604,6 +615,8 @@ export default function Game() {
       return;
     }
     if (lowStockShown.current) return;
+    // Panel pembayaran lebih penting: tunda dulu, tampil setelah panel itu hilang.
+    if (payTip) return;
     // Jeda singkat: snapshot rak dari ronde sebelumnya masih terbaca beberapa frame.
     if (performance.now() - roundStart.current < 800) return;
     // Baru muncul kalau SUDAH ADA 2 rak yang menampilkan "FILL YOUR DISPLAY".
@@ -615,7 +628,7 @@ export default function Game() {
       lowStockTimer.current = null;
       setLowStockTip(false);
     }, 5000);
-  }, [world.shelves, playing]);
+  }, [world.shelves, playing, payTip]);
 
   // Cloud tip di atas kepala pemain: muncul saat ronde dimulai, hilang setelah 10 detik.
   useEffect(() => {
