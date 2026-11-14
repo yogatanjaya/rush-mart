@@ -199,7 +199,7 @@ seed-cost penalty.
   door whoosh on location switch, bell for every customer entering, wooden knock
   when you tap the seed stall, register sound on `BUY ALL`, a soft wood tap when
   restocking a shelf, a deep "pop" when planting/harvesting a single slot, a
-  4-beat sequence for `PLANT ALL` / `HARVEST`, coin chime on profit, buzz on loss.
+  soft thud when planting or harvesting, water splash when watering, coin chime on profit, buzz on loss.
 - A looping background track starts on the first click (browser autoplay rules)
   and can be muted with the HUD music button.
 - The notice bar is a pixel-art wooden signboard; it reports growth timers,
@@ -286,7 +286,7 @@ popup after the first approval**:
 | In-game action | Contract method | Payload |
 |---|---|---|
 | `BUY ALL` at the stall | `record_purchase` | crop, qty, coins |
-| plant one plot / `PLANT ALL` | `record_plant` | crop, qty |
+| plant one plot | `record_plant` | crop, qty |
 | water a plot | **not recorded** (water is free and unlimited) | — |
 | harvest one plot / `HARVEST` | `record_harvest` | crop, qty → **mints NEP-245 tokens** |
 | customer pays correctly | `record_sale` | NPC name, item breakdown, coins, profit → **burns tokens** |
