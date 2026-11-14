@@ -22,6 +22,21 @@ export type WalletStatus = "off" | "connecting" | "on";
 
 type Listener = (s: { status: WalletStatus; accountId: string; pending: number }) => void;
 
+
+// ── Setiap halaman dimuat (termasuk refresh), sesi lama dibersihkan ────────
+// Tujuan: refresh = mulai bersih. Pemain harus connect + approve lagi.
+// Ini membuat notice "Refresh the page to disable on-chain record" benar.
+(function clearSessionOnLoad() {
+  try {
+    localStorage.removeItem(KEY_STORAGE);
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("near-wallet-selector") || k.startsWith("near_app"))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* localStorage bisa diblokir; abaikan */
+  }
+})();
+
 let selector: any = null;
 let modal: any = null;
 let nearApi: any = null;
