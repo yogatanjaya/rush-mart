@@ -94,8 +94,20 @@ export default function Game() {
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
-  // Chip hanya membuka panel; aksi (connect / enable / disconnect) ada di panel.
-  const onWalletClick = useCallback(() => setWalletPanel((v) => !v), []);
+  // Klik chip: kalau belum ada akun -> langsung buka pemilihan wallet (tanpa panel).
+  // Kalau sudah terhubung -> buka panel (tahap izin pencatatan / status / disconnect).
+  const onWalletClick = useCallback(() => {
+    if (!wallet.accountId) {
+      void connectWallet();
+      return;
+    }
+    setWalletPanel((v) => !v);
+  }, [wallet.accountId]);
+
+  // Begitu wallet terhubung tapi kunci sesi belum ada, panel tahap 2 terbuka sendiri.
+  useEffect(() => {
+    if (wallet.accountId && wallet.status !== "on") setWalletPanel(true);
+  }, [wallet.accountId, wallet.status]);
   /** Notice bar di atas tenda BUY SEED — muncul 3 detik setiap masuk kebun. */
   const [tentHint, setTentHint] = useState(false);
 
