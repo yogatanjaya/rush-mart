@@ -94,6 +94,28 @@ export default function Game() {
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
+
+  // Tahap "sudah connect, menunggu izin pencatatan".
+  const awaitingApproval = !!wallet.accountId && wallet.status !== "on";
+  const NOTE_IDLE = "Wallet to get on-chain record";
+  const NOTE_WAIT = "Waiting for approval...";
+  const [walletNote, setWalletNote] = useState(NOTE_IDLE);
+
+  useEffect(() => {
+    if (!awaitingApproval) {
+      setWalletNote(NOTE_IDLE);
+      return;
+    }
+    let i = 0;
+    setWalletNote("");
+    const id = window.setInterval(() => {
+      i += 1;
+      setWalletNote(NOTE_WAIT.slice(0, i));
+      if (i >= NOTE_WAIT.length) window.clearInterval(id);
+    }, 70);
+    return () => window.clearInterval(id);
+  }, [awaitingApproval]);
+
   // Klik chip: kalau belum ada akun -> langsung buka pemilihan wallet (tanpa panel).
   // Kalau sudah terhubung -> buka panel (tahap izin pencatatan / status / disconnect).
   const onWalletClick = useCallback(() => {
@@ -774,10 +796,14 @@ export default function Game() {
             </button>
             <div className="start-hint">Press to Play</div>
             <div className="wallet-row">
-              <button type="button" className={`wallet-chip is-${wallet.status}`} onClick={onWalletClick}>
-                {wallet.status === "on" ? "⛓ ON" : wallet.status === "connecting" ? "⛓ …" : "⛓ CONNECT"}
+              <button
+                type="button"
+                className={`wallet-chip ${wallet.status === "on" ? "is-on" : awaitingApproval ? "is-connected" : `is-${wallet.status}`}`}
+                onClick={onWalletClick}
+              >
+                {wallet.status === "on" ? "⛓ ON" : awaitingApproval ? "Connected" : "⛓ CONNECT"}
               </button>
-              <span className="wallet-note">Wallet to get on-chain record</span>
+              <span className={`wallet-note${awaitingApproval ? " is-busy" : ""}`}>{walletNote}</span>
             </div>
           </div>
           <HowToPlay />
