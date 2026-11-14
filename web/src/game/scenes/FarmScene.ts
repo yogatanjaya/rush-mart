@@ -27,6 +27,8 @@ import { isPlaying } from "../flow";
 import { openSeedShop } from "../ui";
 
 const WORLD_W = 1280;
+/** Titik muncul pemain di kebun: tengah persimpangan jalan (biar langsung terlihat). */
+const FARM_SPAWN = { x: 640, y: 392 };
 const WORLD_H = 720;
 const SCALE = 2;
 
@@ -316,7 +318,7 @@ export class FarmScene extends Phaser.Scene {
   private pendingColliders: Phaser.GameObjects.Rectangle[] = [];
 
   private createPlayer() {
-    this.player = this.physics.add.sprite(640, 690, "player-down-1-out");
+    this.player = this.physics.add.sprite(FARM_SPAWN.x, FARM_SPAWN.y, "player-down-1-out");
     this.player.setDepth(3);
     // sedikit lebih besar dari NPC toko (skala 2) supaya peran pemain menonjol
     this.player.setScale(SCALE * 1.1);
@@ -692,7 +694,12 @@ export class FarmScene extends Phaser.Scene {
     this.scene.setVisible(this.front);
     if (this.input) this.input.enabled = this.front;
     if (this.input?.keyboard) this.input.keyboard.enabled = this.front;
-    if (this.front) this.scene.bringToTop();
+    if (this.front) {
+      this.scene.bringToTop();
+      // Setiap masuk kebun, pemain muncul di tengah jalan (persimpangan).
+      this.player?.setPosition(FARM_SPAWN.x, FARM_SPAWN.y);
+      this.player?.setVelocity(0, 0);
+    }
   }
 
   update() {
