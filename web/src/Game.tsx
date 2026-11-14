@@ -491,7 +491,7 @@ export default function Game() {
       return;
     }
     setMartTip(true);
-    const id = window.setTimeout(() => setMartTip(false), 10000);
+    const id = window.setTimeout(() => setMartTip(false), 5000);
     return () => window.clearTimeout(id);
   }, [playing, result]);
 
@@ -809,7 +809,6 @@ export default function Game() {
             <li>Plant &amp; harvest seeds on the farm</li>
             <li>Stock the minimart shelves</li>
           </ul>
-          <span className="mart-tip-tail" />
         </div>
       )}
       {chainHint === "off" && (
