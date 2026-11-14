@@ -4,8 +4,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# git (native Windows) butuh path gaya C:/..., bukan /c/...
+ROOT_WIN="$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT")"
 MSG="${1:-deploy: build statis Rush Mart}"
-DEPLOY_DIR="$ROOT/.gh-pages-build"
+DEPLOY_DIR="$ROOT_WIN/.gh-pages-build"
 BRANCH="gh-pages"
 
 cd "$ROOT/web"
@@ -23,7 +25,7 @@ fi
 
 cd "$DEPLOY_DIR"
 find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-cp -r "$ROOT/web/dist/." .
+cp -r "$ROOT_WIN/web/dist/." .
 touch .nojekyll
 git add -A
 git -c user.name="Hermes" -c user.email="hermes@local" commit -q -m "$MSG" || echo "tidak ada perubahan untuk di-commit"
