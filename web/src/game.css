@@ -1899,8 +1899,8 @@
 .pause-overlay {
   position: absolute;
   left: 50%;
-  /* dinaikkan 50 px supaya notice/guide di tengah peta tidak tertutup */
-  top: calc(50% - 50px);
+  /* dinaikkan 50 px lagi (total 100 px dari tengah) — hanya posisi, opacity tetap */
+  top: calc(50% - 100px);
   transform: translate(-50%, -50%);
   min-width: 380px;
   padding: 18px 22px 20px;
