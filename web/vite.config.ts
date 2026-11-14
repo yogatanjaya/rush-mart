@@ -5,6 +5,8 @@ import { defineConfig } from "vite";
 // src/polyfills.ts (imported first in main.tsx); here we only alias `global`
 // and make sure the buffer polyfill is bundled/optimized.
 export default defineConfig({
+  // GitHub Pages project site: https://<user>.github.io/rush-mart/
+  base: "/rush-mart/",
   plugins: [react()],
   server: {
     proxy: {

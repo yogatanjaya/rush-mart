@@ -588,7 +588,7 @@
   position: absolute;
   inset: -7px;
   border: 7px solid transparent;
-  border-image: url("/assets/pixel/toast-frame.png") 14 fill stretch;
+  border-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAwCAYAAADuFn/PAAABrklEQVR4nO2bsU7DMBRFU8TAmKFiYOqMOnZAqOqEmPMJfADiYxATEwMfkBEhJlQhhowdGZgQQ4f+QVFAjVypdZxn42vH9yy1lNp58ZNzrxW/wenx0TojMA5wtyY1h5tpuLoYc0Y88vCy+P3lCghlBdScTye4SBLibV7tTsD94xMinuQYj4a7E6BemN3cNe3X22tfsfUKkznUakBZlu6jSoyyZQ61CSiKwnU8yVG0zOFgsxGjDfULbWggbInw4nOJiyQhjFwQ8QN3wmC2VoBERMgfUhMjTkDNe/Vs0703nE0uxX35CgJDF+SILg7SiQuqPr6b9mr51bTz4YnxGCtNP/Val3G7jKn+R/oMtg7SSgNsAm7rl3seU3o/W6gBYJgAMExAH1yQrYB1RSfQOqGVYjIm1AX5FrDcs5iajCl1QXwFgWECwDABYJxsxFzsWl2JqTSWqF1QLDvh/wTqgkhGFxQrFOGYRdjmSxCxTAAPcrmBX8QA8FxQQFCEwTABoYowCzTsYYFGBAUae13QTCku4KlpGfvmUHVBLNAAwQKNQKALAsMEgGk0gGDgCsiw/ADMJYuNzwGqUwAAAABJRU5ErkJggg==") 14 fill stretch;
   opacity: 0.8;
   z-index: -1;
 }
