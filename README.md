@@ -9,7 +9,7 @@ items off your shelves, and queue at the register. Every item they take is money
 you only get if you serve them correctly — and every shelf you empty has to be
 refilled with crops you planted yourself.
 
-One round lasts **150 seconds**. You win by reaching a **net profit goal of 100
+One round lasts **180 seconds**. You win by reaching a **net profit goal of 100
 coins** before the timer hits zero.
 
 ---
@@ -74,7 +74,7 @@ inside the minimarket.
 ```
 
 The tension is that all five jobs — buying, planting, harvesting, restocking,
-and running the register — happen inside the same 150 seconds.
+and running the register — happen inside the same 180 seconds.
 
 ---
 
@@ -116,7 +116,7 @@ and running the register — happen inside the same 150 seconds.
 
 | Rule | Value |
 |---|---|
-| Round length | **150 s** (clock counts down from `02:30`) |
+| Round length | **180 s** (clock counts down from `03:00`) |
 | Win condition | GOALS ≥ 100 when the clock hits `00:00` |
 | Coins floor | coins can never go below **0** |
 | GOALS floor | GOALS **can go negative** (shown as e.g. `-12/100`) |
@@ -292,7 +292,7 @@ popup after the first approval**:
 | customer pays correctly | `record_sale` | NPC name, item breakdown, coins, profit → **burns tokens** |
 | customer lost / wrong change / empty shelf | `record_fail` | NPC name, reason, loss |
 | refill a shelf | `record_refill` | crop, qty |
-| clock hits `00:00` | `record_round` | profit, served, failed, 150 s |
+| clock hits `00:00` | `record_round` | profit, served, failed, round length (s) |
 
 Each call also emits a NEP-297 log, so the full history is permanent and
 indexable without paying storage for every event:

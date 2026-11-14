@@ -29,7 +29,7 @@ function CoinIcon() {
 }
 
 /** Lama satu level bermain: 2 menit 30 detik. */
-const PLAY_SECONDS = 150;
+const PLAY_SECONDS = 180;
 
 const EMPTY: WorldSnapshot = {
   activeScene: "farm",
@@ -69,7 +69,7 @@ const HOW_TO_PLAY_STEPS = [
   "Slot 2 \u2014 watering can: click each plot to water. Crops only grow once watered (15s).",
   "While waiting, serve the queue (the front customer waits 40s).",
   "Slot 3 \u2014 hoe: click ripe plots to harvest, then restock the shelves.",
-  "Reach GOALS 100 before the 150s timer ends.",
+  "Reach GOALS 100 before the 180s timer ends.",
 ];
 
 function HowToPlay() {
