@@ -112,6 +112,8 @@ export default function Game() {
   const farmGuideShown = useRef(false);
   const farmGuideTimer = useRef<number | null>(null);
   const emptySince = useRef<number | null>(null);
+  /** waktu mulai ronde; dipakai menahan panel sebentar supaya data rak lama tidak memicunya. */
+  const roundStart = useRef(0);
   const payTipTimer = useRef<number | null>(null);
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
@@ -539,7 +541,7 @@ export default function Game() {
 
   // Semua rak kosong > 3 detik: panel bertahan sampai ada rak terisi lagi.
   useEffect(() => {
-    if (!playing) {
+    if (!playing || result !== null) {
       emptySince.current = null;
       setEmptyShelves(false);
       return;
@@ -550,6 +552,7 @@ export default function Game() {
       setEmptyShelves(false);
       return;
     }
+    if (performance.now() - roundStart.current < 800) return;
     if (emptySince.current === null) emptySince.current = Date.now();
     const elapsed = Date.now() - emptySince.current;
     if (elapsed >= 3000) {
@@ -558,7 +561,7 @@ export default function Game() {
     }
     const id = window.setTimeout(() => setEmptyShelves(true), 3000 - elapsed);
     return () => window.clearTimeout(id);
-  }, [world.shelves, playing]);
+  }, [world.shelves, playing, result]);
 
   // Perintah dari scene: pelanggan terdepan menunggu > 12 detik.
   useEffect(() => {
@@ -575,13 +578,13 @@ export default function Game() {
 
   // Ronde berakhir: bersihkan notice pembayaran.
   useEffect(() => {
-    if (!playing) setPayTip(null);
-  }, [playing]);
+    if (!playing || result !== null) setPayTip(null);
+  }, [playing, result]);
 
   // Notice sekali per ronde: begitu ada rak <= 8 (muncul "FILL YOUR DISPLAY").
   // Timer disimpan di ref supaya tidak ikut dibatalkan saat data rak berubah.
   useEffect(() => {
-    if (!playing) {
+    if (!playing || result !== null) {
       lowStockShown.current = false;
       if (lowStockTimer.current !== null) {
         window.clearTimeout(lowStockTimer.current);
@@ -591,6 +594,8 @@ export default function Game() {
       return;
     }
     if (lowStockShown.current) return;
+    // Jeda singkat: snapshot rak dari ronde sebelumnya masih terbaca beberapa frame.
+    if (performance.now() - roundStart.current < 800) return;
     // Baru muncul kalau SUDAH ADA 2 rak yang menampilkan "FILL YOUR DISPLAY".
     if (world.shelves.filter((s) => s.count <= 8).length < 2) return;
 
@@ -644,6 +649,20 @@ export default function Game() {
     setToolState("hand");
     timeUpRef.current = false;
     setResult(null);
+    roundStart.current = performance.now();
+    // Ronde baru = seperti refresh: semua panel sementara dibersihkan dulu,
+    // supaya tidak ada panel sisa ronde sebelumnya yang bertabrakan dengan GUIDE.
+    setLowStockTip(false);
+    lowStockShown.current = false;
+    setEmptyShelves(false);
+    emptySince.current = null;
+    setFarmGuide(false);
+    farmGuideShown.current = false;
+    setPayTip(null);
+    if (payTipTimer.current !== null) {
+      window.clearTimeout(payTipTimer.current);
+      payTipTimer.current = null;
+    }
     setTimeLeft(PLAY_SECONDS);
     startSession();
     setPlaying(true);
