@@ -37,3 +37,18 @@ export function onGoToScene(fn: SceneListener): () => void {
 export function goToScene(target: "farm" | "mart") {
   for (const fn of sceneListeners) fn(target);
 }
+
+let payNudgeListeners: Listener[] = [];
+
+/** React mendengarkan: pelanggan terdepan menunggu terlalu lama. */
+export function onPayNudge(fn: Listener): () => void {
+  payNudgeListeners.push(fn);
+  return () => {
+    payNudgeListeners = payNudgeListeners.filter((l) => l !== fn);
+  };
+}
+
+/** Dipanggil scene saat pelanggan pertama sudah menunggu > 12 detik. */
+export function payNudge() {
+  for (const fn of payNudgeListeners) fn();
+}

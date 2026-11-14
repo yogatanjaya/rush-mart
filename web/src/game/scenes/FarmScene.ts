@@ -29,7 +29,8 @@ import { recordPurchase, recordPlant, recordHarvest } from "../../near/wallet";
 
 const WORLD_W = 1280;
 /** Titik muncul pemain di kebun: tengah persimpangan jalan (biar langsung terlihat). */
-const FARM_SPAWN = { x: 640, y: 392 };
+// Spawn di depan pintu "Minimart" (pintu gudang), bukan di tengah jalan.
+const FARM_SPAWN = { x: 1136, y: 212 };
 
 // Pintu gudang di latar (kanvas 1108..1164, 160..232) dipakai sebagai pintu
 // kembali ke minimarket — papan namanya berubah jadi "Minimart".
@@ -194,6 +195,8 @@ export class FarmScene extends Phaser.Scene {
     this.plantSfx = plantSnd;
     this.createStallInteraction();
     this.createPlayer();
+    this.createMartDoorHint();
+    this.createTentHint();
     this.createAnimations();
     this.createHint();
 
@@ -351,6 +354,80 @@ export class FarmScene extends Phaser.Scene {
 
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.spaceKey.on("down", () => this.tryUseMartDoor());
+  }
+
+  /** Petunjuk di bawah bangunan Minimart: kedip 3 detik, jeda 3 detik, berulang. */
+  private createMartDoorHint() {
+    this.martDoorHint = this.add
+      .text(1136, 238, "Stand on door & click\nto return to minimart.", {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: "7px",
+        color: "#ffd166",
+        stroke: "#2a1608",
+        strokeThickness: 3,
+        align: "center",
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(7)
+      .setVisible(true);
+
+    // kedip halus selama fase "tampil"
+    this.tweens.add({
+      targets: this.martDoorHint,
+      alpha: { from: 1, to: 0.45 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // 3 detik tampil -> 3 detik hilang -> ulang
+    this.time.addEvent({
+      delay: 3000,
+      loop: true,
+      callback: () => {
+        if (!isPlaying()) {
+          this.martDoorHint?.setVisible(false);
+          return;
+        }
+        this.martDoorHint?.setVisible(!this.martDoorHint.visible);
+      },
+    });
+  }
+
+  /** Petunjuk di bawah tenda bibit: kedip 3 detik, jeda 3 detik, berulang. */
+  private createTentHint() {
+    this.tentDoorHint = this.add
+      .text(170, 372, "BUY SEED HERE - CLICK TENT", {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: "7px",
+        color: "#ffd166",
+        stroke: "#2a1608",
+        strokeThickness: 3,
+        align: "center",
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(7)
+      .setVisible(true);
+
+    this.tweens.add({
+      targets: this.tentDoorHint,
+      alpha: { from: 1, to: 0.45 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.time.addEvent({
+      delay: 3000,
+      loop: true,
+      callback: () => {
+        if (!isPlaying()) {
+          this.tentDoorHint?.setVisible(false);
+          return;
+        }
+        this.tentDoorHint?.setVisible(!this.tentDoorHint.visible);
+      },
+    });
   }
 
   private createAnimations() {
@@ -749,6 +826,10 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private spaceKey?: Phaser.Input.Keyboard.Key;
+  /** Tulisan berkedip di bawah bangunan Minimart (petunjuk keluar). */
+  private martDoorHint?: Phaser.GameObjects.Text;
+  /** Tulisan berkedip di bawah tenda BUY SEED. */
+  private tentDoorHint?: Phaser.GameObjects.Text;
 
   private movePlayer() {
     const speed = 210;

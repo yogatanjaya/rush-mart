@@ -643,44 +643,6 @@ def shadows():
 
 
 
-def draw_farm_door(d):
-    """Pintu kayu ke kebun (kiri bawah minimarket).
-
-    Gaya sama seperti pintu gudang di peta kebun: papan kayu vertikal,
-    kusen gelap, pegangan besi, dan papan kecil "FARM" di atasnya.
-    """
-    x, y, w, h = 66, 310, 46, 48
-
-    # bayangan lantai
-    d.rectangle([x - 2, y + h, x + w + 2, y + h + 3], fill="#C9A26A")
-
-    # kusen
-    rect(d, x - 2, y - 2, w + 4, h + 4, "#3F1C0E")
-    # daun pintu: papan vertikal
-    rect(d, x, y, w, h, "#7A4A22")
-    for i in range(x + 3, x + w - 2, 6):
-        d.rectangle([i, y + 2, i + 3, y + h - 3], fill="#8B5A2B")
-        d.rectangle([i + 1, y + 2, i + 1, y + h - 3], fill="#9A6631")
-    # palang mendatar
-    rect(d, x + 1, y + 8, w - 2, 4, "#5B2B19")
-    rect(d, x + 1, y + h - 16, w - 2, 4, "#5B2B19")
-    # pegangan besi
-    rect(d, x + w - 11, y + h // 2 - 1, 5, 3, "#2A1608")
-    # engsel
-    rect(d, x + 1, y + 6, 5, 3, "#2A1608")
-    rect(d, x + 1, y + h - 14, 5, 3, "#2A1608")
-
-    # papan nama "FARM" di atas pintu
-    label = "FARM"
-    tw = text_w(label)
-    pw_, ph_ = tw + 8, 11
-    px_ = x + w // 2 - pw_ // 2
-    py_ = y - 15
-    rect(d, px_, py_, pw_, ph_, "#4A2410")
-    rect(d, px_ + 1, py_ + 1, pw_ - 2, ph_ - 2, "#F2E2C2")
-    draw_text(d, px_ + 4, py_ + 3, label, "#4A2410")
-
-
 def main():
     rng = random.Random(7)
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -705,10 +667,10 @@ def main():
 
     # 4 rak + papan harga
     tags = [
-        (45, 113, "JAGUNG — 10", "#E5B93C"),
-        (185, 113, "TOMAT — 15", "#D14B3C"),
-        (45, 220, "WORTEL — 15", "#E08A2E"),
-        (185, 220, "KENTANG — 12", "#B98D62"),
+        (45, 108, "JAGUNG — 10", "#E5B93C"),
+        (185, 108, "TOMAT — 15", "#D14B3C"),
+        (45, 215, "WORTEL — 15", "#E08A2E"),
+        (185, 215, "KENTANG — 12", "#B98D62"),
     ]
     for (x, y, label, dot) in tags:
         draw_shelf(d, x, y)
@@ -718,7 +680,6 @@ def main():
     draw_zones(d)
     draw_queue_lane(d)
     draw_door(d)
-    draw_farm_door(d)
 
     out = os.path.join(OUT, "market-bg.png")
     img.save(out)

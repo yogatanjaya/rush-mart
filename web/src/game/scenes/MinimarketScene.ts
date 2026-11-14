@@ -20,7 +20,7 @@ import {
   type WorldSnapshot,
 } from "../types";
 import { economy, saleProfit } from "../economy";
-import { goToScene } from "../ui";
+import { goToScene, payNudge } from "../ui";
 import { isPlaying } from "../flow";
 import { recordSale, recordFail, recordRefill } from "../../near/wallet";
 
@@ -42,10 +42,10 @@ const SHELF_SLOTS = SHELF_COLS * SHELF_ROWS;
 
 /** 4 rak: dua kolom, dua baris. */
 const SHELF_POS: { crop: CropId; x: number; y: number }[] = [
-  { crop: "jagung", x: 90, y: 226 },
-  { crop: "tomat", x: 370, y: 226 },
-  { crop: "wortel", x: 90, y: 440 },
-  { crop: "kentang", x: 370, y: 440 },
+  { crop: "jagung", x: 90, y: 216 },
+  { crop: "tomat", x: 370, y: 216 },
+  { crop: "wortel", x: 90, y: 430 },
+  { crop: "kentang", x: 370, y: 430 },
 ];
 
 const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
@@ -55,7 +55,7 @@ const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
 const PLAYER_SPAWN = { x: 980, y: 168 };
 
 // Pintu kayu ke kebun di kiri bawah (digambar di market-bg oleh generator).
-const FARM_DOOR = { x: 132, y: 620, w: 92, h: 96 };
+const FARM_DOOR = { x: 132, y: 596, w: 92, h: 84 };
 const DOOR_REACH = 120;
 
 /**
@@ -72,9 +72,8 @@ const WAVE_PAUSE_SEC = { min: 15, max: 25 };
  * pemain bisa langsung jualan tanpa menanam dulu; tidak memotong inventory.
  */
 const START_STOCK: Record<CropId, number> = { jagung: 11, tomat: 10, wortel: 12, kentang: 10 };
-/** Kesabaran pelanggan diacak per orang (mili detik). */
-const PATIENCE_MIN_MS = 20000;
-const PATIENCE_MAX_MS = 40000;
+/** Kesabaran pelanggan: 40 detik, dihitung sejak ia JADI ORANG PERTAMA di antrian. */
+const PATIENCE_MS = 40000;
 /** Pecahan uang yang dipakai pelanggan membayar. */
 const BILLS = [10, 20, 50, 100];
 
@@ -206,6 +205,8 @@ interface Customer {
   slot: number;
   lastDir: "down" | "up" | "left" | "right";
   serving: number;
+  /** Sudah pernah memicu notice "someone wants to pay". */
+  nudged?: boolean;
   /** y jalur aman menuju kasir (di bawah rak baris 1 atau baris 2). */
   rowY: number;
 }
@@ -273,7 +274,7 @@ export class MinimarketScene extends Phaser.Scene {
     };
 
     if (!this.textures.exists("market-bg")) {
-      this.load.image("market-bg", base + "pixel/market-bg.png?v=9");
+      this.load.image("market-bg", base + "pixel/market-bg.png?v=11");
     }
     for (const crop of ["jagung", "tomat", "wortel", "kentang"]) {
       if (!this.textures.exists(`item-${crop}`)) {
@@ -645,6 +646,9 @@ export class MinimarketScene extends Phaser.Scene {
 
   private colliders: Phaser.GameObjects.Rectangle[] = [];
   private spaceKey?: Phaser.Input.Keyboard.Key;
+  /** Papan "FARM" di dalam pintu kayu (papannya berkedip saat rak perlu diisi). */
+  private farmDoorSign?: Phaser.GameObjects.Container;
+  private farmDoorBlink?: Phaser.Tweens.Tween;
 
   private createPlayer() {
     this.player = this.physics.add.sprite(PLAYER_SPAWN.x, PLAYER_SPAWN.y, "player-down-1-out");
@@ -667,12 +671,73 @@ export class MinimarketScene extends Phaser.Scene {
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.spaceKey.on("down", () => this.tryUseFarmDoor());
 
-    // Klik pada pintu kayu juga berfungsi (tidak perlu tepat di karpet pintu).
-    const doorZone = this.add
-      .zone(FARM_DOOR.x + FARM_DOOR.w / 2, FARM_DOOR.y + FARM_DOOR.h / 2, FARM_DOOR.w, FARM_DOOR.h)
+    // Pintu kayu ke kebun: digambar di sini (bukan di latar) supaya posisi
+    // gambar, zona klik, dan papan FARM selalu sama persis.
+    const dz = this.drawFarmDoor();
+    dz.on("pointerdown", () => this.tryUseFarmDoor());
+  }
+
+  /** Pintu kayu ke kebun + papan "FARM" (papannya berkedip saat rak menipis). */
+  private drawFarmDoor() {
+    const { x, y, w, h } = FARM_DOOR;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const parts: Phaser.GameObjects.GameObject[] = [];
+
+    // kusen + daun pintu
+    parts.push(this.add.rectangle(cx, cy, w, h, 0x3f1c0e).setOrigin(0.5, 0.5));
+    parts.push(this.add.rectangle(cx, cy, w - 8, h - 8, 0x7a4a22).setOrigin(0.5, 0.5));
+    // papan vertikal
+    for (let i = 0; i < 6; i++) {
+      const px = x + 6 + i * ((w - 12) / 6);
+      parts.push(this.add.rectangle(px, cy, (w - 12) / 6 - 2, h - 12, 0x8b5a2b).setOrigin(0.5, 0.5));
+    }
+    // dua palang mendatar
+    parts.push(this.add.rectangle(cx, y + h - 18, w - 12, 6, 0x5b2b19).setOrigin(0.5, 0.5));
+    // pegangan
+    parts.push(this.add.rectangle(x + w - 14, cy + 6, 5, 5, 0x2a1608).setOrigin(0.5, 0.5));
+
+    // badan pintu (tidak pernah berkedip)
+    this.add.container(0, 0, parts).setDepth(5);
+
+    // papan nama: bingkai gelap + kertas krem + teks (gaya papan ENTRY).
+    // Dibuat sebagai kontainer TERPISAH supaya hanya papannya yang berkedip.
+    const plateY = y + 16;
+    const plate: Phaser.GameObjects.GameObject[] = [
+      this.add.rectangle(cx, plateY, 62, 20, 0x4a2410).setOrigin(0.5, 0.5),
+      this.add.rectangle(cx, plateY, 56, 15, 0xf2e2c2).setOrigin(0.5, 0.5),
+      this.add
+        .text(cx, plateY + 1, "FARM", {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: "7px",
+          color: "#4A2410",
+        })
+        .setOrigin(0.5, 0.5),
+    ];
+    this.farmDoorSign = this.add.container(0, 0, plate).setDepth(6);
+    // Outer glow sungguhan (WebGL post-processing). Otomatis dilewati kalau renderer canvas.
+    try {
+      this.farmDoorSign.postFX?.addGlow(0xffd75e, 3, 1, false, 8, 12);
+    } catch {
+      /* canvas renderer: tidak ada glow, kedip tetap jalan */
+    }
+
+    // Kedip halus (tween yoyo), tidak dihitung per-frame.
+    this.farmDoorBlink = this.tweens.add({
+      targets: this.farmDoorSign,
+      alpha: { from: 1, to: 0.45 },
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      paused: true,
+    });
+
+    const zone = this.add
+      .zone(cx, cy, w, h)
       .setOrigin(0.5, 0.5)
-      .setInteractive({ useHandCursor: true });
-    doorZone.on("pointerdown", () => this.tryUseFarmDoor());
+      .setInteractive({ useHandCursor: true })
+      .setDepth(7);
+    return zone;
   }
 
   /** Pemain menekan SPACE / mengklik pintu kayu: pindah ke kebun kalau cukup dekat. */
@@ -732,6 +797,16 @@ export class MinimarketScene extends Phaser.Scene {
     this.updateCustomers();
 
     if (this.notice && this.time.now > this.noticeUntil) this.notice = null;
+
+    // Papan FARM berkedip halus saat ada rak dengan stok <= 8.
+    if (this.farmDoorBlink && this.farmDoorSign) {
+      const needRefill = this.shelves.some((s) => this.countIn(s) <= 8);
+      if (needRefill && this.farmDoorBlink.isPaused()) this.farmDoorBlink.resume();
+      if (!needRefill && !this.farmDoorBlink.isPaused()) {
+        this.farmDoorBlink.pause();
+        this.farmDoorSign.setAlpha(1);
+      }
+    }
   }
 
   /** Sorotan rak mengikuti posisi pointer — tidak bergantung event zone. */
@@ -1091,11 +1166,20 @@ export class MinimarketScene extends Phaser.Scene {
       } else if (c.state === "toQueue") {
         if (this.moveAlong(c, 150)) {
           c.state = "waiting";
-          // kesabaran diacak per pelanggan
-          c.patienceUntil = now + Phaser.Math.Between(PATIENCE_MIN_MS, PATIENCE_MAX_MS);
+          // Kesabaran hanya berjalan untuk orang pertama di antrian.
+          c.patienceUntil = c.slot === 0 ? now + PATIENCE_MS : 0;
         }
       } else if (c.state === "waiting") {
-        if (now >= c.patienceUntil) {
+        // Orang pertama yang menunggu > 12 detik: beri tahu pemain (sekali per pelanggan).
+        // Tidak perlu diingatkan kalau pemain sudah membuka panel bayar pelanggan ini.
+        if (c.slot === 0 && c.patienceUntil > 0 && !c.nudged && this.pendingCustomer !== c) {
+          const waitedMs = PATIENCE_MS - (c.patienceUntil - now);
+          if (waitedMs >= 12000) {
+            c.nudged = true;
+            payNudge();
+          }
+        }
+        if (c.patienceUntil > 0 && now >= c.patienceUntil) {
           // Kabur tanpa bayar: barang hangus, pemain rugi seharga bibit.
           if (this.pendingCustomer === c) this.clearPayment();
           this.floatProfit(-this.applyAbandonPenalty(c));

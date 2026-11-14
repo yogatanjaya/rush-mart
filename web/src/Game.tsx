@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { connectWallet, ensureSessionKey, disconnectWallet, subscribe as subscribeWallet, recordRound } from "./near/wallet";
 import Phaser from "phaser";
 import { FarmScene } from "./game/scenes/FarmScene";
-import { onOpenSeedShop, onGoToScene } from "./game/ui";
+import { onOpenSeedShop, onGoToScene, onPayNudge } from "./game/ui";
 import { MinimarketScene } from "./game/scenes/MinimarketScene";
 import { economy, resetEconomy } from "./game/economy";
 import { isPlaying, startSession, stopSession } from "./game/flow";
@@ -93,6 +93,11 @@ export default function Game() {
   const [walletPanel, setWalletPanel] = useState(false);
   const [chainHint, setChainHint] = useState<null | "off" | "on">(null);
   const [martTip, setMartTip] = useState(false);
+  const [lowStockTip, setLowStockTip] = useState(false);
+  const lowStockShown = useRef(false);
+  const lowStockTimer = useRef<number | null>(null);
+  const [payTip, setPayTip] = useState<null | "farm" | "mart">(null);
+  const payTipTimer = useRef<number | null>(null);
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
@@ -161,7 +166,6 @@ export default function Game() {
     if (wallet.accountId && wallet.status !== "on") setWalletPanel(true);
   }, [wallet.accountId, wallet.status]);
   /** Notice bar di atas tenda BUY SEED — muncul 3 detik setiap masuk kebun. */
-  const [tentHint, setTentHint] = useState(false);
 
   const [musicOn, setMusicOn] = useState(true);
 
@@ -354,10 +358,6 @@ export default function Game() {
    * dipindah, jadi ronde jualan (dan pertumbuhan tanaman) tidak berhenti.
    */
   /** Tampilkan notice tenda selama 3 detik. */
-  const showTentHint = useCallback(() => {
-    setTentHint(true);
-    window.setTimeout(() => setTentHint(false), 3000);
-  }, []);
 
   const switchScene = useCallback((key: "FarmScene" | "MinimarketScene") => {
     const game = gameRef.current;
@@ -481,6 +481,48 @@ export default function Game() {
     }
   }, []);
 
+  // Perintah dari scene: pelanggan terdepan menunggu > 12 detik.
+  useEffect(() => {
+    const off = onPayNudge(() => {
+      setPayTip(viewRef.current === "farm" ? "farm" : "mart");
+      if (payTipTimer.current !== null) window.clearTimeout(payTipTimer.current);
+      payTipTimer.current = window.setTimeout(() => {
+        payTipTimer.current = null;
+        setPayTip(null);
+      }, 4000);
+    });
+    return off;
+  }, []);
+
+  // Ronde berakhir: bersihkan notice pembayaran.
+  useEffect(() => {
+    if (!playing) setPayTip(null);
+  }, [playing]);
+
+  // Notice sekali per ronde: begitu ada rak <= 8 (muncul "FILL YOUR DISPLAY").
+  // Timer disimpan di ref supaya tidak ikut dibatalkan saat data rak berubah.
+  useEffect(() => {
+    if (!playing) {
+      lowStockShown.current = false;
+      if (lowStockTimer.current !== null) {
+        window.clearTimeout(lowStockTimer.current);
+        lowStockTimer.current = null;
+      }
+      setLowStockTip(false);
+      return;
+    }
+    if (lowStockShown.current) return;
+    // Baru muncul kalau SUDAH ADA 2 rak yang menampilkan "FILL YOUR DISPLAY".
+    if (world.shelves.filter((s) => s.count <= 8).length < 2) return;
+
+    lowStockShown.current = true;
+    setLowStockTip(true);
+    lowStockTimer.current = window.setTimeout(() => {
+      lowStockTimer.current = null;
+      setLowStockTip(false);
+    }, 5000);
+  }, [world.shelves, playing]);
+
   // Cloud tip di atas kepala pemain: muncul saat ronde dimulai, hilang setelah 10 detik.
   useEffect(() => {
     if (!playing || result !== null) {
@@ -537,14 +579,13 @@ export default function Game() {
       if (target === "farm") {
         playNav();
         switchScene("FarmScene");
-        showTentHint();
       } else {
         playNav();
         switchScene("MinimarketScene");
       }
     });
     return off;
-  }, [switchScene, showTentHint]);
+  }, [switchScene]);
 
   const totalSeedCost = CROP_ORDER.reduce((sum, c) => sum + CROPS[c].seed * qty[c], 0);
   return (
@@ -791,13 +832,22 @@ export default function Game() {
         </div>
       )}
 
-      {tentHint && (
-        <div className="game-toast tent-hint">
-          BUY SEED HERE - CLICK TENT
+      {toast && <div className="game-toast">{toast}</div>}
+      {payTip === "farm" && (
+        <div className="mart-tip low-stock pay-tip" role="note">
+          <b>Head back to minimart.</b> Someone wants to pay! Step on the green mat and click the NPC.
         </div>
       )}
-
-      {toast && <div className="game-toast">{toast}</div>}
+      {payTip === "mart" && (
+        <div className="mart-tip low-stock pay-tip" role="note">
+          Someone wants to pay! Step on the green mat and click the NPC.
+        </div>
+      )}
+      {lowStockTip && (
+        <div className="mart-tip low-stock" role="note">
+          Shelves will run out of stock! <b>Head to the farm</b> to plant &amp; harvest, then restock.
+        </div>
+      )}
       {martTip && (
         <div className="mart-tip" role="note">
           <ul>
