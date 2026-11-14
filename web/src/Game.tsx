@@ -18,9 +18,9 @@ import { CROPS, CROP_ORDER, type CropId, type WorldSnapshot } from "./game/types
 
 /** Alat di ujung kanan inventory bar (hanya ini yang bisa diklik). */
 const TOOLS: { id: Tool; title: string }[] = [
-  { id: "hand", title: "Tangan kosong (tanam / lihat)" },
-  { id: "water", title: "Pot air (siram petak)" },
-  { id: "hoe", title: "Cangkul (panen)" },
+  { id: "hand", title: "Tangan kosong — tanam (tombol 1)" },
+  { id: "water", title: "Pot air — siram (tombol 2)" },
+  { id: "hoe", title: "Cangkul — panen (tombol 3)" },
 ];
 import "./game.css";
 
@@ -108,6 +108,9 @@ export default function Game() {
   const [payTip, setPayTip] = useState<null | "farm" | "mart">(null);
   const [emptyShelves, setEmptyShelves] = useState(false);
   const [tool, setToolState] = useState<Tool>("hand");
+  const [farmGuide, setFarmGuide] = useState(false);
+  const farmGuideShown = useRef(false);
+  const farmGuideTimer = useRef<number | null>(null);
   const emptySince = useRef<number | null>(null);
   const payTipTimer = useRef<number | null>(null);
 
@@ -494,6 +497,43 @@ export default function Game() {
     }
   }, []);
 
+  // Tombol angka 1/2/3 memilih alat (sama seperti klik di inventory bar).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (!playing || result) return;
+      const map: Record<string, Tool> = { "1": "hand", "2": "water", "3": "hoe" };
+      const picked = map[e.key];
+      if (!picked) return;
+      e.preventDefault();
+      setToolState(picked);
+      setTool(picked);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [playing, result]);
+
+  // Panduan kebun: sekali per ronde, saat pemain pertama kali masuk FARM.
+  useEffect(() => {
+    if (!playing) {
+      farmGuideShown.current = false;
+      if (farmGuideTimer.current !== null) {
+        window.clearTimeout(farmGuideTimer.current);
+        farmGuideTimer.current = null;
+      }
+      setFarmGuide(false);
+      return;
+    }
+    if (world.activeScene !== "farm" || farmGuideShown.current) return;
+    farmGuideShown.current = true;
+    setFarmGuide(true);
+    farmGuideTimer.current = window.setTimeout(() => {
+      farmGuideTimer.current = null;
+      setFarmGuide(false);
+    }, 5000);
+  }, [world.activeScene, playing]);
+
   // Alat bisa direset oleh scene (mis. setiap masuk kebun → tangan kosong).
   useEffect(() => onToolChanged((t) => setToolState(t)), []);
 
@@ -599,6 +639,9 @@ export default function Game() {
   const restartRound = useCallback(() => {
     playButtonSfx();
     resetEconomy();
+    // Ronde baru selalu mulai dengan tangan kosong
+    setTool("hand");
+    setToolState("hand");
     timeUpRef.current = false;
     setResult(null);
     setTimeLeft(PLAY_SECONDS);
@@ -890,11 +933,25 @@ export default function Game() {
         </div>
       )}
 
-      {toast && <div className="game-toast">{toast.text}</div>}
+      {toast && (
+        <div className={`game-toast${world.activeScene === "farm" ? " farm-toast" : ""}`}>
+          {toast.text}
+        </div>
+      )}
       {/* Disembunyikan saat pemain sudah berada di kebun (tidak perlu disuruh ke FARM). */}
       {emptyShelves && world.activeScene !== "farm" && (
         <div className="mart-tip empty-shelves" role="note">
           Shelves are empty - no NPC entering, go to FARM
+        </div>
+      )}
+      {farmGuide && (
+        <div className="mart-tip guide-panel" role="note">
+          <b className="guide-panel-title">GUIDE</b>
+          <ol>
+            <li>Buy seeds &amp; plant with bare hand (Slot 1)</li>
+            <li>Water crops &amp; wait 20s</li>
+            <li>Harvest using the shovel (Slot 3)</li>
+          </ol>
         </div>
       )}
       {payTip === "farm" && (
@@ -913,12 +970,13 @@ export default function Game() {
         </div>
       )}
       {martTip && (
-        <div className="mart-tip" role="note">
-          <ul>
+        <div className="mart-tip guide-panel" role="note">
+          <b className="guide-panel-title">GUIDE</b>
+          <ol>
             <li>Serve customers at the cashier</li>
             <li>Plant &amp; harvest seeds on the farm</li>
             <li>Stock the minimart shelves</li>
-          </ul>
+          </ol>
         </div>
       )}
       {chainHint === "off" && (

@@ -105,6 +105,8 @@ interface Slot {
   readyLabel: Phaser.GameObjects.Text;
   /** Tulisan "Need Water": sudah ditanam tapi belum disiram. */
   needWaterLabel: Phaser.GameObjects.Text;
+  /** Tulisan "Harvest": tanaman sudah siap panen. */
+  harvestLabel: Phaser.GameObjects.Text;
 }
 
 export class FarmScene extends Phaser.Scene {
@@ -324,6 +326,7 @@ export class FarmScene extends Phaser.Scene {
             wet: undefined as unknown as Phaser.GameObjects.Rectangle,
             readyLabel: undefined as unknown as Phaser.GameObjects.Text,
             needWaterLabel: undefined as unknown as Phaser.GameObjects.Text,
+            harvestLabel: undefined as unknown as Phaser.GameObjects.Text,
           };
 
           zone.on("pointerover", () => {
@@ -396,10 +399,35 @@ export class FarmScene extends Phaser.Scene {
             ease: "Sine.easeInOut",
           });
 
+          // tulisan "Harvest": muncul saat tanaman siap panen
+          const harvestLabel = this.add
+            .text(slot.x, slot.y - 23, "Harvest", {
+              fontFamily: "Verdana, system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#fff8e2",
+              align: "center",
+              stroke: "#2a1608",
+              strokeThickness: 2,
+            })
+            .setOrigin(0.5)
+            .setAlpha(0.26)
+            .setDepth(2.2)
+            .setVisible(false);
+
+          this.tweens.add({
+            targets: harvestLabel,
+            alpha: { from: 0.15, to: 0.38 },
+            duration: 900,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+
           slot.watered = false;
           slot.wet = wet;
           slot.readyLabel = readyLabel;
           slot.needWaterLabel = needWaterLabel;
+          slot.harvestLabel = harvestLabel;
 
           this.slots.push(slot);
         }
@@ -665,6 +693,7 @@ export class FarmScene extends Phaser.Scene {
       slot.wet.setVisible(false);
       slot.readyLabel.setVisible(false);
       slot.needWaterLabel.setVisible(false);
+      slot.harvestLabel.setVisible(false);
       slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
     }
   }
@@ -684,9 +713,9 @@ export class FarmScene extends Phaser.Scene {
         this.harvest(slot);
         this.playPlantSfx();
       } else if (slot.stage === 0) {
-        this.say("Nothing planted here yet.");
+        this.say("nothing planted here yet\nPlant seeds first (use bare hand, Slot 1).");
       } else if (!slot.watered) {
-        this.say("Water it first – pick the watering can.");
+        this.say("Water it first – pick the CAN (Slot 2).");
       } else {
         const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
         this.say(`Still Growing – ${left}s left.`);
@@ -700,11 +729,11 @@ export class FarmScene extends Phaser.Scene {
       return;
     }
     if (slot.stage === 3) {
-      this.say("Use the hoe (cangkul) to harvest.");
+      this.say("Use hoe (Slot 3) to harvest.");
       return;
     }
     if (!slot.watered) {
-      this.say("Water it first – pick the watering can.");
+      this.say("Water it first – pick the CAN (Slot 2).");
       return;
     }
     const left = Math.max(0, Math.ceil(STAGE_SECONDS * 2 - (this.time.now - slot.plantedAt) / 1000));
@@ -713,8 +742,17 @@ export class FarmScene extends Phaser.Scene {
 
   /** Siram satu petak. Boleh sebelum menanam ("SIAP - TANAM"). */
   private waterSlot(slot: Slot) {
+    // Petak siap panen: menyiram tidak ada gunanya
+    if (slot.stage === 3) {
+      this.say("Ripe! Harvest it with the HOE (Slot 3).");
+      return;
+    }
     if (slot.watered) {
-      this.say("This plot is already watered.");
+      this.say(
+        slot.stage === 0
+          ? "Soil already watered – plant a seed here."
+          : "Already watered – growing now."
+      );
       return;
     }
     slot.watered = true;
@@ -810,6 +848,7 @@ export class FarmScene extends Phaser.Scene {
     slot.plantedAt = slot.watered ? this.time.now : 0;
     slot.readyLabel.setVisible(false);
     slot.needWaterLabel.setVisible(!slot.watered);
+    slot.harvestLabel.setVisible(false);
     slot.sprite = this.add
       .image(slot.zone.x, slot.zone.y, `crop-${slot.crop}-1-out`)
       .setOrigin(0.5, 0.5)
@@ -841,6 +880,7 @@ export class FarmScene extends Phaser.Scene {
     slot.wet.setVisible(false);
     slot.readyLabel.setVisible(false);
     slot.needWaterLabel.setVisible(false);
+    slot.harvestLabel.setVisible(false);
     slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
 
     if (sprite) {
@@ -855,7 +895,7 @@ export class FarmScene extends Phaser.Scene {
         onComplete: () => sprite.destroy(),
       });
     }
-    this.say(`${CROPS[slot.crop].name} harvested! Sent to inventory.`);
+    this.say(`${CROPS[slot.crop].name} Harvested!`);
     recordHarvest(slot.crop, 1);
   }
 
@@ -871,6 +911,7 @@ export class FarmScene extends Phaser.Scene {
     slot.wet.setVisible(false);
     slot.readyLabel.setVisible(false);
     slot.needWaterLabel.setVisible(false);
+    slot.harvestLabel.setVisible(false);
     slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
     if (sprite) {
       this.tweens.add({
@@ -1072,6 +1113,7 @@ export class FarmScene extends Phaser.Scene {
       const next: Stage = age >= STAGE_SECONDS * 2 ? 3 : age >= STAGE_SECONDS ? 2 : 1;
       if (next !== slot.stage) {
         slot.stage = next;
+        slot.harvestLabel.setVisible(next === 3);
         if (slot.sprite) {
           slot.sprite.setTexture(`crop-${slot.crop}-${next}-out`);
           this.tweens.add({ targets: slot.sprite, scale: CROP_SCALE * 1.12, duration: 180, yoyo: true });

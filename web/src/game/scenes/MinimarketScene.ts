@@ -20,7 +20,7 @@ import {
   type WorldSnapshot,
 } from "../types";
 import { economy, saleProfit } from "../economy";
-import { goToScene, payNudge } from "../ui";
+import { goToScene, payNudge, resetTool } from "../ui";
 import { isPlaying } from "../flow";
 import { recordSale, recordFail, recordRefill } from "../../near/wallet";
 
@@ -384,7 +384,11 @@ export class MinimarketScene extends Phaser.Scene {
     this.scene.setVisible(this.front);
     if (this.input) this.input.enabled = this.front;
     if (this.input?.keyboard) this.input.keyboard.enabled = this.front;
-    if (this.front) this.scene.bringToTop();
+    if (this.front) {
+      // Setiap masuk minimarket, pemain memegang tangan kosong lagi.
+      resetTool();
+      this.scene.bringToTop();
+    }
   }
 
   // ─── Dunia ───────────────────────────────────────────────────────────────

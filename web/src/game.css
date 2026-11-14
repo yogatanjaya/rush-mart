@@ -534,6 +534,8 @@
 /* ─── Toast ─────────────────────────────────────────────────────────────── */
 
 .game-toast {
+  /* hormati baris baru dari scene (mis. pesan 2 baris) */
+  white-space: pre-line;
   position: absolute;
   left: 50%;
   bottom: 71px;
@@ -1828,4 +1830,46 @@
   border-color: #ffd166;
   box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.55), 0 3px 0 rgba(0, 0, 0, 0.35);
   background: #f7e6bd;
+}
+
+/* Notice bar khusus halaman kebun: lebih pekat + font teks biasa */
+.game-toast.farm-toast {
+  font-family: Verdana, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.35;
+  padding: 4px 10px 5px;
+}
+
+.game-toast.farm-toast::before {
+  opacity: 0.9;
+}
+
+/* Panel GUIDE saat pertama masuk kebun (gaya sama seperti panel tugas awal) */
+.mart-tip.guide-panel {
+  width: 430px;
+  padding: 14px 20px 15px;
+  font-size: 16px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.mart-tip.guide-panel .guide-panel-title {
+  display: block;
+  text-align: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  color: #ffe2ad;
+}
+
+.mart-tip.guide-panel ol {
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
+.mart-tip.guide-panel li {
+  margin-bottom: 3px;
 }
