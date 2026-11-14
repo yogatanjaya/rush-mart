@@ -648,6 +648,9 @@ export class MinimarketScene extends Phaser.Scene {
   private spaceKey?: Phaser.Input.Keyboard.Key;
   /** Papan "FARM" di dalam pintu kayu (papannya berkedip saat rak perlu diisi). */
   private farmDoorSign?: Phaser.GameObjects.Container;
+  /** Tulisan "Too far!" di bawah pintu (kedip 4x saat klik dari jauh). */
+  private tooFarHint?: Phaser.GameObjects.Text;
+  private tooFarTween?: Phaser.Tweens.Tween;
   private farmDoorBlink?: Phaser.Tweens.Tween;
 
   private createPlayer() {
@@ -673,8 +676,41 @@ export class MinimarketScene extends Phaser.Scene {
 
     // Pintu kayu ke kebun: digambar di sini (bukan di latar) supaya posisi
     // gambar, zona klik, dan papan FARM selalu sama persis.
+    this.createTooFarHint();
     const dz = this.drawFarmDoor();
     dz.on("pointerdown", () => this.tryUseFarmDoor());
+  }
+
+  /** Teks arahan kecil di bawah pintu FARM (disembunyikan, muncul saat salah jarak). */
+  private createTooFarHint() {
+    this.tooFarHint = this.add
+      .text(178, 684, "Too far! Stand in front\nof the door and click it.", {
+        fontFamily: '"VT323", monospace',
+        fontSize: "14px",
+        color: "#ffd166",
+        stroke: "#2a1608",
+        strokeThickness: 3,
+        align: "center",
+        lineSpacing: -2,
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(8)
+      .setVisible(false);
+  }
+
+  /** Kedip 4 kali lalu hilang (dipakai saat pemain klik pintu dari jauh). */
+  private flashTooFarHint() {
+    if (!this.tooFarHint) return;
+    this.tooFarTween?.stop();
+    this.tooFarHint.setVisible(true).setAlpha(1);
+    this.tooFarTween = this.tweens.add({
+      targets: this.tooFarHint,
+      alpha: { from: 1, to: 0.25 },
+      duration: 260,
+      yoyo: true,
+      repeat: 3, // 4 kali kedip
+      onComplete: () => this.tooFarHint?.setVisible(false),
+    });
   }
 
   /** Pintu kayu ke kebun + papan "FARM" (papannya berkedip saat rak menipis). */
@@ -684,21 +720,28 @@ export class MinimarketScene extends Phaser.Scene {
     const cy = y + h / 2;
     const parts: Phaser.GameObjects.GameObject[] = [];
 
-    // kusen + daun pintu
-    parts.push(this.add.rectangle(cx, cy, w, h, 0x3f1c0e).setOrigin(0.5, 0.5));
-    parts.push(this.add.rectangle(cx, cy, w - 8, h - 8, 0x7a4a22).setOrigin(0.5, 0.5));
-    // papan vertikal
-    for (let i = 0; i < 6; i++) {
-      const px = x + 6 + i * ((w - 12) / 6);
-      parts.push(this.add.rectangle(px, cy, (w - 12) / 6 - 2, h - 12, 0x8b5a2b).setOrigin(0.5, 0.5));
-    }
-    // dua palang mendatar
-    parts.push(this.add.rectangle(cx, y + h - 18, w - 12, 6, 0x5b2b19).setOrigin(0.5, 0.5));
-    // pegangan
-    parts.push(this.add.rectangle(x + w - 14, cy + 6, 5, 5, 0x2a1608).setOrigin(0.5, 0.5));
+    // Pintu dibuat seperti PINTU GUDANG di kebun: cekungan gelap di dinding,
+    // dua daun pintu dengan garis tengah, dan gagang kuningan kecil.
+    // (Versi sebelumnya terang & menonjol, jadi terlihat seperti punggung pintu.)
+    parts.push(this.add.rectangle(cx, cy, w, h, 0x2a1608).setOrigin(0.5, 0.5));            // kusen gelap
+    parts.push(this.add.rectangle(cx, cy + 2, w - 6, h - 6, 0x4a2410).setOrigin(0.5, 0.5)); // cekungan
+    parts.push(this.add.rectangle(cx, y + 7, w - 8, 2, 0x6b3a20).setOrigin(0.5, 0.5));      // kilau atas
 
-    // badan pintu (tidak pernah berkedip)
-    this.add.container(0, 0, parts).setDepth(5);
+    // garis tengah (dua daun pintu)
+    parts.push(this.add.rectangle(cx, cy + 4, 2, h - 12, 0x2a1608).setOrigin(0.5, 0.5));
+
+    // garis papan tipis di tiap daun
+    for (const dx of [-18, -9, 9, 18]) {
+      parts.push(
+        this.add.rectangle(cx + dx, cy + 6, 1, h - 20, 0x3a1d10).setOrigin(0.5, 0.5)
+      );
+    }
+
+    // ambang bawah (bayangan)
+    parts.push(this.add.rectangle(cx, y + h - 7, w - 8, 4, 0x2a1608).setOrigin(0.5, 0.5));
+
+    // gagang kuningan di daun kanan
+    parts.push(this.add.rectangle(cx + 12, cy + 8, 4, 4, 0xc9a26a).setOrigin(0.5, 0.5));
 
     // papan nama: bingkai gelap + kertas krem + teks (gaya papan ENTRY).
     // Dibuat sebagai kontainer TERPISAH supaya hanya papannya yang berkedip.
@@ -714,7 +757,7 @@ export class MinimarketScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0.5),
     ];
-    this.farmDoorSign = this.add.container(0, 0, plate).setDepth(6);
+    this.farmDoorSign = this.add.container(0, 0, plate).setDepth(1.5);
     // Outer glow sungguhan (WebGL post-processing). Otomatis dilewati kalau renderer canvas.
     try {
       this.farmDoorSign.postFX?.addGlow(0xffd75e, 3, 1, false, 8, 12);
@@ -747,7 +790,7 @@ export class MinimarketScene extends Phaser.Scene {
     const cy = FARM_DOOR.y + FARM_DOOR.h / 2;
     const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, cx, cy);
     if (d > DOOR_REACH) {
-      this.say("Walk closer to the door, then press SPACE.");
+      this.flashTooFarHint();
       return;
     }
     goToScene("farm");
@@ -935,7 +978,8 @@ export class MinimarketScene extends Phaser.Scene {
     const profile = Phaser.Utils.Array.GetRandom(NPC_PROFILES);
     const plan = this.buildBasket(profile);
     if (plan.length === 0) {
-      this.say("Shelves are empty – no customers entering, go to FARM.");
+      // Semua rak kosong: pelanggan tidak jadi masuk.
+      // Pemberitahuannya ditangani panel React (tengah perempatan rak).
       return;
     }
 

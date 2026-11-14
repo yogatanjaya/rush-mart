@@ -97,6 +97,8 @@ export default function Game() {
   const lowStockShown = useRef(false);
   const lowStockTimer = useRef<number | null>(null);
   const [payTip, setPayTip] = useState<null | "farm" | "mart">(null);
+  const [emptyShelves, setEmptyShelves] = useState(false);
+  const emptySince = useRef<number | null>(null);
   const payTipTimer = useRef<number | null>(null);
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
@@ -481,6 +483,29 @@ export default function Game() {
     }
   }, []);
 
+  // Semua rak kosong > 3 detik: panel bertahan sampai ada rak terisi lagi.
+  useEffect(() => {
+    if (!playing) {
+      emptySince.current = null;
+      setEmptyShelves(false);
+      return;
+    }
+    const allEmpty = world.shelves.length > 0 && world.shelves.every((s) => s.count === 0);
+    if (!allEmpty) {
+      emptySince.current = null;
+      setEmptyShelves(false);
+      return;
+    }
+    if (emptySince.current === null) emptySince.current = Date.now();
+    const elapsed = Date.now() - emptySince.current;
+    if (elapsed >= 3000) {
+      setEmptyShelves(true);
+      return;
+    }
+    const id = window.setTimeout(() => setEmptyShelves(true), 3000 - elapsed);
+    return () => window.clearTimeout(id);
+  }, [world.shelves, playing]);
+
   // Perintah dari scene: pelanggan terdepan menunggu > 12 detik.
   useEffect(() => {
     const off = onPayNudge(() => {
@@ -833,6 +858,12 @@ export default function Game() {
       )}
 
       {toast && <div className="game-toast">{toast}</div>}
+      {/* Disembunyikan saat pemain sudah berada di kebun (tidak perlu disuruh ke FARM). */}
+      {emptyShelves && world.activeScene !== "farm" && (
+        <div className="mart-tip empty-shelves" role="note">
+          Shelves are empty - no NPC entering, go to FARM
+        </div>
+      )}
       {payTip === "farm" && (
         <div className="mart-tip low-stock pay-tip" role="note">
           <b>Head back to minimart.</b> Someone wants to pay! Step on the green mat and click the NPC.
