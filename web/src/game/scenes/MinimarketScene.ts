@@ -20,6 +20,7 @@ import {
   type WorldSnapshot,
 } from "../types";
 import { economy, saleProfit } from "../economy";
+import { goToScene } from "../ui";
 import { isPlaying } from "../flow";
 import { recordSale, recordFail, recordRefill } from "../../near/wallet";
 
@@ -41,10 +42,10 @@ const SHELF_SLOTS = SHELF_COLS * SHELF_ROWS;
 
 /** 4 rak: dua kolom, dua baris. */
 const SHELF_POS: { crop: CropId; x: number; y: number }[] = [
-  { crop: "jagung", x: 90, y: 236 },
-  { crop: "tomat", x: 370, y: 236 },
-  { crop: "wortel", x: 90, y: 450 },
-  { crop: "kentang", x: 370, y: 450 },
+  { crop: "jagung", x: 90, y: 226 },
+  { crop: "tomat", x: 370, y: 226 },
+  { crop: "wortel", x: 90, y: 440 },
+  { crop: "kentang", x: 370, y: 440 },
 ];
 
 const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
@@ -52,6 +53,10 @@ const COUNTER = { x: 798, y: 216, w: 364, h: 76 };
 // Pemain muncul di tengah karpet kasir (pusat CASHIER_MAT 916+64, 140+28),
 // bukan lagi di pintu ENTRY, supaya langsung terlihat saat masuk minimarket.
 const PLAYER_SPAWN = { x: 980, y: 168 };
+
+// Pintu kayu ke kebun di kiri bawah (digambar di market-bg oleh generator).
+const FARM_DOOR = { x: 132, y: 620, w: 92, h: 96 };
+const DOOR_REACH = 120;
 
 /**
  * Traffic pelanggan berbasis gelombang (disetujui Bos Yoga):
@@ -639,6 +644,7 @@ export class MinimarketScene extends Phaser.Scene {
   }
 
   private colliders: Phaser.GameObjects.Rectangle[] = [];
+  private spaceKey?: Phaser.Input.Keyboard.Key;
 
   private createPlayer() {
     this.player = this.physics.add.sprite(PLAYER_SPAWN.x, PLAYER_SPAWN.y, "player-down-1-out");
@@ -658,6 +664,28 @@ export class MinimarketScene extends Phaser.Scene {
       string,
       Phaser.Input.Keyboard.Key
     >;
+    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spaceKey.on("down", () => this.tryUseFarmDoor());
+
+    // Klik pada pintu kayu juga berfungsi (tidak perlu tepat di karpet pintu).
+    const doorZone = this.add
+      .zone(FARM_DOOR.x + FARM_DOOR.w / 2, FARM_DOOR.y + FARM_DOOR.h / 2, FARM_DOOR.w, FARM_DOOR.h)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true });
+    doorZone.on("pointerdown", () => this.tryUseFarmDoor());
+  }
+
+  /** Pemain menekan SPACE / mengklik pintu kayu: pindah ke kebun kalau cukup dekat. */
+  private tryUseFarmDoor() {
+    if (!isPlaying() || !this.front || !this.player) return;
+    const cx = FARM_DOOR.x + FARM_DOOR.w / 2;
+    const cy = FARM_DOOR.y + FARM_DOOR.h / 2;
+    const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, cx, cy);
+    if (d > DOOR_REACH) {
+      this.say("Walk closer to the door, then press SPACE.");
+      return;
+    }
+    goToScene("farm");
   }
 
   private createAnimations() {

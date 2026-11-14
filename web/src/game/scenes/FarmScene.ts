@@ -24,12 +24,17 @@ import {
 } from "../types";
 import { economy } from "../economy";
 import { isPlaying } from "../flow";
-import { openSeedShop } from "../ui";
+import { openSeedShop, goToScene } from "../ui";
 import { recordPurchase, recordPlant, recordHarvest } from "../../near/wallet";
 
 const WORLD_W = 1280;
 /** Titik muncul pemain di kebun: tengah persimpangan jalan (biar langsung terlihat). */
 const FARM_SPAWN = { x: 640, y: 392 };
+
+// Pintu gudang di latar (kanvas 1108..1164, 160..232) dipakai sebagai pintu
+// kembali ke minimarket — papan namanya berubah jadi "Minimart".
+const MART_DOOR = { x: 1108, y: 160, w: 56, h: 72 };
+const DOOR_REACH = 130;
 const WORLD_H = 720;
 const SCALE = 2;
 
@@ -246,7 +251,7 @@ export class FarmScene extends Phaser.Scene {
     // Papan nama gudang: teks duduk di papan kayu yang tergambar di atas pintu
     // (aset: draw_barn_sign di scripts/gen_pixel_assets.py, x+30 y+28, 44x12).
     this.add
-      .text(1136, 148, "Warehouse", {
+      .text(1136, 148, "Minimart", {
         fontFamily: "Verdana, system-ui, sans-serif",
         fontSize: "10px",
         color: "#4A2410",
@@ -319,6 +324,13 @@ export class FarmScene extends Phaser.Scene {
   private pendingColliders: Phaser.GameObjects.Rectangle[] = [];
 
   private createPlayer() {
+    // Zona pintu gudang (kanvas 1108..1164, 160..232) untuk klik.
+    const doorZone = this.add
+      .zone(MART_DOOR.x + MART_DOOR.w / 2, MART_DOOR.y + MART_DOOR.h / 2, MART_DOOR.w, MART_DOOR.h)
+      .setOrigin(0.5, 0.5)
+      .setInteractive({ useHandCursor: true });
+    doorZone.on("pointerdown", () => this.tryUseMartDoor());
+
     this.player = this.physics.add.sprite(FARM_SPAWN.x, FARM_SPAWN.y, "player-down-1-out");
     this.player.setDepth(3);
     // sedikit lebih besar dari NPC toko (skala 2) supaya peran pemain menonjol
@@ -336,6 +348,9 @@ export class FarmScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
+
+    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spaceKey.on("down", () => this.tryUseMartDoor());
   }
 
   private createAnimations() {
@@ -719,6 +734,21 @@ export class FarmScene extends Phaser.Scene {
     this.updateStallPrompt();
     if (this.notice && this.time.now > this.noticeUntil) this.notice = null;
   }
+
+  /** Pintu gudang (kini "Minimart"): klik / SPACE untuk kembali ke minimarket. */
+  private tryUseMartDoor() {
+    if (!isPlaying() || !this.front || !this.player) return;
+    const cx = MART_DOOR.x + MART_DOOR.w / 2;
+    const cy = MART_DOOR.y + MART_DOOR.h / 2;
+    const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, cx, cy);
+    if (d > DOOR_REACH) {
+      this.say("Walk closer to the minimart door, then press SPACE.");
+      return;
+    }
+    goToScene("mart");
+  }
+
+  private spaceKey?: Phaser.Input.Keyboard.Key;
 
   private movePlayer() {
     const speed = 210;

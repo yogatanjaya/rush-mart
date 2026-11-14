@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { connectWallet, ensureSessionKey, disconnectWallet, subscribe as subscribeWallet, recordRound } from "./near/wallet";
 import Phaser from "phaser";
 import { FarmScene } from "./game/scenes/FarmScene";
-import { onOpenSeedShop } from "./game/ui";
+import { onOpenSeedShop, onGoToScene } from "./game/ui";
 import { MinimarketScene } from "./game/scenes/MinimarketScene";
 import { economy, resetEconomy } from "./game/economy";
 import { isPlaying, startSession, stopSession } from "./game/flow";
@@ -266,9 +266,6 @@ export default function Game() {
   const [payChange, setPayChange] = useState("");
   const changeRef = useRef<HTMLInputElement>(null);
   const payId = world.store.payment?.id ?? 0;
-  /** Ada rak yang menampilkan "FILL YOUR DISPLAY" (stok ≤ 8) → tombol FARM berkedip. */
-  const needsRefill = world.shelves.some((s) => s.count <= 8);
-
 
 
   const billTotal = world.store.payment
@@ -534,6 +531,21 @@ export default function Game() {
     mini?.resetRound();
   }, [switchScene]);
 
+  // Pintu di peta memanggil ini lewat game/ui.ts (klik atau SPACE).
+  useEffect(() => {
+    const off = onGoToScene((target) => {
+      if (target === "farm") {
+        playNav();
+        switchScene("FarmScene");
+        showTentHint();
+      } else {
+        playNav();
+        switchScene("MinimarketScene");
+      }
+    });
+    return off;
+  }, [switchScene, showTentHint]);
+
   const totalSeedCost = CROP_ORDER.reduce((sum, c) => sum + CROPS[c].seed * qty[c], 0);
   return (
     <div className={`game-root${playing ? " is-playing" : ""}`} ref={rootRef}>
@@ -562,22 +574,6 @@ export default function Game() {
             <span className="hud-music-icon" aria-hidden="true">♪</span>
             <span>{musicOn ? "ON" : "OFF"}</span>
           </button>
-        </div>
-
-        {/* Pindah halaman + TUTUP TOKO. Tombol mulai jualan ada di layar PLAY. */}
-        <div className="hud-center">
-          {world.activeScene === "farm" ? (
-            <button className="hud-btn" onClick={() => { playNav(); switchScene("MinimarketScene"); }}>
-              MINIMART
-            </button>
-          ) : (
-            <button
-              className={`hud-btn ${needsRefill ? "is-alert" : ""}`}
-              onClick={() => { playNav(); switchScene("FarmScene"); showTentHint(); }}
-            >
-              FARM
-            </button>
-          )}
         </div>
 
         <div className="hud-right">
