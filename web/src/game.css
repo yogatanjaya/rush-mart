@@ -1398,17 +1398,13 @@
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
-  color: #2a1608;
+  color: #1c0f04;
   letter-spacing: 0.02em;
   /* VT323: geser sedikit ke bawah supaya sejajar tengah tombol */
   transform: translateY(0);
   text-shadow: 0 1px 0 rgba(255, 240, 210, 0.55);
 }
 
-.wallet-note.is-busy {
-  color: #7a4a12;
-  font-style: italic;
-}
 
 .wallet-chip {
   padding: 5px 8px;
@@ -1433,24 +1429,34 @@
   background: #e0b45f;
 }
 
-/* Chip yang sama di HUD (saat bermain) */
-.hud-chip {
+/* Chip wallet di HUD (saat bermain): dua baris, "on-chain / record on|off" */
+.hud-wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 88px;
+  height: 44px;
+  padding: 3px 8px;
   font-family: "Press Start 2P", monospace;
-  font-size: 8px;
-  line-height: 1;
-  padding: 6px 8px;
-  color: #3a2210;
-  background: #dcc59c;
-  border: 2px solid #2a1608;
+  font-size: 7px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: #fff3e6;
+  background: #a8382b;
+  border: 3px solid #2a1608;
   box-shadow: 0 3px 0 #2a1608;
   cursor: pointer;
 }
-.hud-chip.is-on {
+.hud-wallet.is-on {
   background: #7da88b;
   color: #0d2418;
+  opacity: 1;
 }
-.hud-chip.is-connecting {
-  background: #e0b45f;
+.hud-wallet:hover {
+  filter: brightness(1.08);
 }
 
 .start-title {
@@ -1722,4 +1728,29 @@
 .wallet-panel-btn.is-ghost {
   background: #ddc7a1;
   color: #6b2d16;
+}
+
+/* Notice di tengah peta: muncul saat chip HUD on-chain diklik tetapi belum aktif */
+.game-toast.chain-hint {
+  left: 50%;
+  top: 46%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  max-width: 330px;
+  padding: 8px 14px 9px;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+  color: #5f1d0a;
+  opacity: 0.8;
+}
+.game-toast.chain-hint::before {
+  inset: -9px;
+  border-width: 9px;
+}
+.game-toast.chain-hint b {
+  font-weight: 700;
+  color: #3c1103;
+  /* VT323 tidak punya bold tebal; stroke tipis membuat huruf jelas lebih tebal */
+  -webkit-text-stroke: 0.45px currentColor;
 }

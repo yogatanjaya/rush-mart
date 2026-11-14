@@ -91,33 +91,62 @@ export default function Game() {
     sent: 0,
   });
   const [walletPanel, setWalletPanel] = useState(false);
+  const [chainHint, setChainHint] = useState<null | "off" | "on">(null);
 
   useEffect(() => subscribeWallet((s: any) => setWallet(s)) as any, []);
 
 
   // Tahap "sudah connect, menunggu izin pencatatan".
+
   const awaitingApproval = !!wallet.accountId && wallet.status !== "on";
   const NOTE_IDLE = "Wallet to get on-chain record";
   const NOTE_WAIT = "Waiting for approval...";
+  const NOTE_DONE = "Wallet Connected & Approved";
   const [walletNote, setWalletNote] = useState(NOTE_IDLE);
 
+  // Typewriter berulang selama menunggu approval; berhenti setelah disetujui.
   useEffect(() => {
+    if (wallet.status === "on") {
+      setWalletNote(NOTE_DONE);
+      return;
+    }
     if (!awaitingApproval) {
       setWalletNote(NOTE_IDLE);
       return;
     }
     let i = 0;
+    let hold = 0;
     setWalletNote("");
     const id = window.setInterval(() => {
-      i += 1;
-      setWalletNote(NOTE_WAIT.slice(0, i));
-      if (i >= NOTE_WAIT.length) window.clearInterval(id);
+      if (i < NOTE_WAIT.length) {
+        i += 1;
+        setWalletNote(NOTE_WAIT.slice(0, i));
+      } else if (hold < 10) {
+        hold += 1; // jeda sebelum mengulang
+      } else {
+        i = 0;
+        hold = 0;
+        setWalletNote("");
+      }
     }, 70);
     return () => window.clearInterval(id);
-  }, [awaitingApproval]);
+  }, [awaitingApproval, wallet.status]);
+
+  // Setelah approval berhasil: panel tahap 2 menutup sendiri, kembali ke papan PLAY.
+  useEffect(() => {
+    if (wallet.status === "on") setWalletPanel(false);
+  }, [wallet.status]);
+
+
+  // Chip di HUD: tidak membuka wallet/panel — hanya notice 3 detik.
+  const onHudWalletClick = useCallback(() => {
+    setChainHint(wallet.status === "on" ? "on" : "off");
+    window.setTimeout(() => setChainHint(null), 3000);
+  }, [wallet.status]);
 
   // Klik chip: kalau belum ada akun -> langsung buka pemilihan wallet (tanpa panel).
   // Kalau sudah terhubung -> buka panel (tahap izin pencatatan / status / disconnect).
+
   const onWalletClick = useCallback(() => {
     if (!wallet.accountId) {
       void connectWallet();
@@ -499,11 +528,12 @@ export default function Game() {
       <div className="hud" onPointerDown={(e) => e.stopPropagation()}>
         <div className="hud-left">
           <button
-            className={`hud-chip is-${wallet.status}`}
-            onClick={onWalletClick}
+            className={`hud-wallet ${wallet.status === "on" ? "is-on" : "is-off"}`}
+            onClick={onHudWalletClick}
             title={wallet.accountId || "connect wallet to record on-chain"}
           >
-            {wallet.status === "on" ? `⛓ ${wallet.sent}` : "⛓ OFF"}
+            <span>on-chain</span>
+            <span>record {wallet.status === "on" ? "on" : "off"}</span>
           </button>
           <button
             className={`hud-btn hud-music${musicOn ? "" : " is-off"}`}
@@ -753,6 +783,16 @@ export default function Game() {
       )}
 
       {toast && <div className="game-toast">{toast}</div>}
+      {chainHint === "off" && (
+        <div className="game-toast chain-hint">
+          <b>Refresh</b> page, and <b>Connect</b> wallet to get on-chain record
+        </div>
+      )}
+      {chainHint === "on" && (
+        <div className="game-toast chain-hint">
+          To <b>Disable</b> on-chain record, <b>Refresh</b> the page
+        </div>
+      )}
 
       {/* ─── Hasil ronde: SUCCESS / FAIL ───────────────────────────────── */}
       {result !== null && (
@@ -801,9 +841,9 @@ export default function Game() {
                 className={`wallet-chip ${wallet.status === "on" ? "is-on" : awaitingApproval ? "is-connected" : `is-${wallet.status}`}`}
                 onClick={onWalletClick}
               >
-                {wallet.status === "on" ? "⛓ ON" : awaitingApproval ? "Connected" : "⛓ CONNECT"}
+                {wallet.accountId ? "Connected" : "⛓ CONNECT"}
               </button>
-              <span className={`wallet-note${awaitingApproval ? " is-busy" : ""}`}>{walletNote}</span>
+              <span className="wallet-note">{walletNote}</span>
             </div>
           </div>
           <HowToPlay />
@@ -829,7 +869,7 @@ export default function Game() {
                 <>
                   <p className="wallet-panel-acct">{wallet.accountId}</p>
                   <p className="wallet-panel-note">
-                    Step 2 of 2 — allow the game to record your actions (1 approval, then no more popups).
+                    Allow the game to record your actions (1 approval, then no more popups).
                   </p>
                   <button type="button" className="wallet-panel-btn" onClick={() => ensureSessionKey()}>
                     ENABLE RECORDING
