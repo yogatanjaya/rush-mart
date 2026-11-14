@@ -87,8 +87,6 @@ and running the register — happen inside the same 150 seconds.
 | bare hand + click an empty plot | plants one seed of that plot's crop |
 | watering can + click a plot | waters it (works before planting too — plot shows `READY PLANT`) |
 | hoe + click a ripe plot | harvests that single crop |
-| `PLANT ALL` (per plot) | plants seeds into every empty slot, one by one |
-| `HARVEST` (per plot, vertical button) | harvests every ripe slot, one by one |
 | click the BUY SEED stall (while standing in front of it) | opens the seed store |
 | click a shelf | refill that shelf from your inventory of that crop |
 | stand on the green cashier mat + click a queued customer | opens the payment panel |
@@ -148,9 +146,9 @@ including shelves back to their starting stock.
   Pick the **watering can** and click the plot; only then does the 15-second timer
   start. An unwatered seed shows `Need Water`, a pre-watered empty plot shows
   `READY PLANT`, and a ripe crop shows `Harvest`.
-- `PLANT ALL` plants one seed every **110 ms** until the plot is full, so you can
-  watch it fill up. `HARVEST` does the same in reverse. Watering is always manual,
-  one plot per click.
+- Planting, watering and harvesting are all **one click per slot** — there is no
+  bulk button. You plant with the bare hand, water with the can, and harvest ripe
+  crops with the hoe.
 - Harvested crops go into an **11-cell inventory bar** pinned to the bottom of the
   map: **3 tool cells** (bare hand, watering can, hoe) on the left, then a 5 px gap,
   then four harvested-produce cells and four seed packets, each with a counter.

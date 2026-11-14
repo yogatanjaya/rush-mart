@@ -73,13 +73,7 @@ const SLOT_W = (PLOT_W - INSET * 2) / SLOT_COLS; // 57.6
 const SLOT_H = (PLOT_H - INSET * 2) / SLOT_ROWS; // 80
 /** Skala gambar tanaman: sedikit lebih kecil dari slot supaya tidak tumpang tindih. */
 const CROP_SCALE = SCALE * 0.85;
-/** Jeda antar petak saat menekan "TANAM SEMUA" (ms). */
-const PLANT_ALL_SFX_OFFSETS = [0, 300, 600, 900];
-const PLANT_ALL_SFX_VOLUME = 0.06;
 
-const PLANT_STEP_MS = 110;
-/** Jeda antar petak saat menekan "PANEN" (ms). */
-const HARVEST_STEP_MS = 110;
 
 /** Titik tengah tiap slot di dalam satu lahan. */
 const slotCenter = (i: number, j: number) => ({
@@ -122,8 +116,6 @@ export class FarmScene extends Phaser.Scene {
   /** Suara menyiram (HTMLAudio). */
   private waterSfx?: HTMLAudioElement;
   private waterSfxAt = 0;
-  /** Suara TANAM SEMUA yang sedang berbunyi (polifoni, maks 3). */
-  private plantAllVoices: HTMLAudioElement[] = [];
 
   private stallSign?: Phaser.GameObjects.Text;
   private stallFlash?: Phaser.GameObjects.Rectangle;
@@ -210,7 +202,6 @@ export class FarmScene extends Phaser.Scene {
 
     this.drawLabels();
     this.createPlots();
-    this.createPlantAllButtons();
 
     const plantSnd = new Audio("assets/sfx/plant.wav");
     plantSnd.volume = 0.08;
@@ -643,60 +634,6 @@ export class FarmScene extends Phaser.Scene {
     this.nearStall = Phaser.Geom.Rectangle.Contains(zone, this.player.x, this.player.y);
   }
 
-  /** Tombol kecil "TANAM SEMUA" di bawah kanan setiap lahan. */
-  private createPlantAllButtons() {
-    for (const pos of PLOT_POS) {
-      // ── tombol PANEN: vertikal, menempel di sisi lahan ──
-      // Kolom kiri (jagung & wortel) di sisi kiri, kolom kanan di sisi kanan.
-      const leftSide = pos.x < 640;
-      const hx = leftSide ? pos.x - 9 : pos.x + PLOT_W + 9;
-      const H_BTN_W = 22;
-      const H_BTN_H = 88;
-      const hy = pos.y + PLOT_H - H_BTN_H / 2;
-      const hb = this.add
-        .rectangle(hx, hy, H_BTN_W, H_BTN_H, 0x2a1608, 0.92)
-        .setStrokeStyle(2, 0xe8d5a8)
-        .setDepth(3.2)
-        .setInteractive({ useHandCursor: true });
-      this.add
-        .text(hx, hy, "H\nA\nR\nV\nE\nS\nT", {
-          fontFamily: '"Press Start 2P", monospace',
-          fontSize: "7px",
-          color: "#f4e2b8",
-          align: "center",
-          lineSpacing: 3,
-        })
-        .setOrigin(0.5)
-        .setDepth(3.3);
-      hb.on("pointerover", () => hb.setFillStyle(0x4a2410, 0.95));
-      hb.on("pointerout", () => hb.setFillStyle(0x2a1608, 0.92));
-      hb.on("pointerdown", () => {
-        if (isPlaying() && this.front) this.harvestCrop(pos.crop);
-      });
-
-      const x = leftSide ? pos.x + 54 : pos.x + PLOT_W - 54;
-      const y = pos.y + PLOT_H + 12;
-      const bg = this.add
-        .rectangle(x, y, 104, 22, 0x2a1608, 0.92)
-        .setStrokeStyle(2, 0xe8d5a8)
-        .setDepth(3.2)
-        .setInteractive({ useHandCursor: true });
-      this.add
-        .text(x, y, "PLANT ALL", {
-          fontFamily: '"Press Start 2P", monospace',
-          fontSize: "7px",
-          color: "#f4e2b8",
-        })
-        .setOrigin(0.5)
-        .setDepth(3.3);
-
-      bg.on("pointerover", () => bg.setFillStyle(0x4a2410, 0.95));
-      bg.on("pointerout", () => bg.setFillStyle(0x2a1608, 0.92));
-      bg.on("pointerdown", () => {
-        if (isPlaying() && this.front) this.plantAll(pos.crop);
-      });
-    }
-  }
 
   /** Bersihkan semua petak (dipakai saat ronde baru dimulai). */
   resetPlots() {
@@ -809,28 +746,8 @@ export class FarmScene extends Phaser.Scene {
    * (tiap petak 110 ms). Tiap bunyi memakai pemutar sendiri, jadi tidak
    * saling memotong kalau tombol ditekan di lahan lain.
    */
-  private playPlantAllSfx() {
-    if (!this.plantSfx) return;
-    for (const ms of PLANT_ALL_SFX_OFFSETS) {
-      this.time.delayedCall(ms, () => this.spawnPlantVoice(PLANT_ALL_SFX_VOLUME));
-    }
-  }
 
   /** Satu "suara" tanam; maksimal 3 berbunyi bersamaan. */
-  private spawnPlantVoice(volume: number) {
-    const base = this.plantSfx;
-    if (!base) return;
-    this.plantAllVoices = this.plantAllVoices.filter((v) => !v.ended && !v.paused);
-    if (this.plantAllVoices.length >= 3) return;
-
-    const voice = base.cloneNode(true) as HTMLAudioElement;
-    voice.volume = volume;
-    voice.addEventListener("ended", () => {
-      this.plantAllVoices = this.plantAllVoices.filter((v) => v !== voice);
-    });
-    this.plantAllVoices.push(voice);
-    void voice.play().catch(() => {});
-  }
 
   private playWaterSfx() {
     const a = this.waterSfx;
@@ -917,104 +834,17 @@ export class FarmScene extends Phaser.Scene {
 
   /** Panen satu petak tanpa pesan — dipakai tombol HARVEST.
    *  Pencatatannya dilakukan sekali di harvestCrop() (agregat), bukan di sini. */
-  private harvestQuiet(slot: Slot) {
-    this.inventory[slot.crop] += 1;
-    const sprite = slot.sprite;
-    slot.stage = 0;
-    slot.sprite = null;
-    slot.watered = false;
-    slot.plantedAt = 0;
-    slot.wet.setVisible(false);
-    slot.readyLabel.setVisible(false);
-    slot.needWaterLabel.setVisible(false);
-    slot.harvestLabel.setVisible(false);
-    slot.ring.setStrokeStyle(2, 0x4a2410, 0.25);
-    if (sprite) {
-      this.tweens.add({
-        targets: sprite,
-        y: sprite.y - 70,
-        alpha: 0,
-        scale: CROP_SCALE * 1.25,
-        duration: 520,
-        ease: "Quad.easeOut",
-        onComplete: () => sprite.destroy(),
-      });
-    }
-  }
 
   /**
    * Tanam semua bibit jenis ini yang ada di inventory ke slot kosong di lahan
    * itu (maksimal 15 slot). Dipanggil tombol "TANAM SEMUA" di bawah lahan.
    */
-  plantAll(crop: CropId) {
-    const empty = this.slots.filter((s) => s.crop === crop && s.stage === 0);
-    if (empty.length === 0) {
-      this.say(`${CROPS[crop].name} plot is full.`);
-      return;
-    }
-    if (this.seeds[crop] <= 0) {
-      this.say(`Out of ${CROPS[crop].name} seeds. Get more via BUY SEED.`);
-      return;
-    }
-
-    this.playPlantAllSfx();
-
-    // Tanam berurutan: petak 1, tunggu PLANT_STEP_MS, petak 2, dan seterusnya.
-    let n = 0;
-    for (const slot of empty) {
-      if (this.seeds[crop] <= 0) break;
-      this.seeds[crop] -= 1;
-
-      const delayMs = n * PLANT_STEP_MS;
-      slot.stage = 1;
-      // waktu tanam dimundurkan sesuai jeda, supaya umur tanaman dihitung
-      // sejak bibit benar-benar muncul (bukan sejak tombol ditekan).
-      slot.plantedAt = slot.watered ? this.time.now + delayMs : 0;
-      slot.readyLabel.setVisible(false);
-      slot.needWaterLabel.setVisible(!slot.watered);
-
-      this.time.delayedCall(delayMs, () => {
-        slot.sprite = this.add
-          .image(slot.zone.x, slot.zone.y, `crop-${crop}-1-out`)
-          .setOrigin(0.5, 0.5)
-          .setScale(CROP_SCALE * 0.55)
-          .setDepth(2);
-        this.tweens.add({
-          targets: slot.sprite,
-          scale: CROP_SCALE,
-          duration: 200,
-          ease: "Back.easeOut",
-        });
-      });
-
-      n += 1;
-    }
-
-    this.say(`${n} ${CROPS[crop].name} seeds planted.`);
-    recordPlant(crop, n);
-  }
 
   /** Panen hanya satu jenis tanaman. */
   /**
    * Panen semua yang siap di lahan itu, satu petak demi satu petak dengan jeda
    * (dipanggil tombol PANEN vertikal di samping kanan lahan).
    */
-  harvestCrop(crop: CropId) {
-    const ready = this.slots.filter((s) => s.crop === crop && s.stage === 3);
-    if (ready.length === 0) {
-      this.say(`No ${CROPS[crop].name} ready to harvest yet.`);
-      return;
-    }
-    this.playPlantAllSfx();
-
-    let n = 0;
-    for (const slot of ready) {
-      this.time.delayedCall(n * HARVEST_STEP_MS, () => this.harvestQuiet(slot));
-      n += 1;
-    }
-    this.say(`${n} ${CROPS[crop].name} harvested.`);
-    recordHarvest(crop, n);
-  }
 
   /** Dipanggil HUD: beli bibit. Mengembalikan false kalau koin kurang.
    *  quiet = true dipakai BUY ALL supaya tidak memunculkan 4 pesan beruntun. */
